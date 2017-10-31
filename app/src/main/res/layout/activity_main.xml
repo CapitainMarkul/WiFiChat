@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <data></data>
+
+    <android.support.constraint.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        tools:context="ru.tensor.wi_fi_directchat.presentation.modules.clients.view.activity.ClientsActivity">
+
+        <Toolbar
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <Button
+                android:id="@+id/btn_start_search"
+                android:layout_width="200dp"
+                android:layout_height="match_parent"
+                android:text="Start Search"/>
+        </Toolbar>
+
+        <FrameLayout
+            android:id="@+id/root_container"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"/>
+    </android.support.constraint.ConstraintLayout>
+</layout>

@@ -1,29 +1,50 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools">
 
     <data></data>
 
-    <android.support.constraint.ConstraintLayout
+    <android.support.design.widget.CoordinatorLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        tools:context="ru.tensor.wi_fi_directchat.presentation.modules.clients.view.activity.ClientsActivity">
+        android:layout_height="match_parent">
 
-        <Toolbar
+        <android.support.constraint.ConstraintLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="match_parent"
+            tools:context="ru.tensor.wi_fi_directchat.presentation.modules.clients.view.activity.ClientsActivity">
 
-            <Button
-                android:id="@+id/btn_start_search"
-                android:layout_width="200dp"
-                android:layout_height="match_parent"
-                android:text="Start Search"/>
-        </Toolbar>
+            <Toolbar
+                android:id="@+id/toolbar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:layout_marginStart="8dp"
+                android:layout_marginTop="8dp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
 
-        <FrameLayout
-            android:id="@+id/root_container"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"/>
-    </android.support.constraint.ConstraintLayout>
+                <Button
+                    android:id="@+id/btn_start_search"
+                    android:layout_width="200dp"
+                    android:layout_height="match_parent"
+                    android:text="Start Search" />
+            </Toolbar>
+
+            <android.support.v7.widget.RecyclerView
+                android:id="@+id/recyclerView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:layout_marginEnd="8dp"
+                android:layout_marginStart="8dp"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/toolbar"
+                app:layout_constraintVertical_bias="0.035" />
+        </android.support.constraint.ConstraintLayout>
+<include layout="@layout/bottom_sheet"/>
+    </android.support.design.widget.CoordinatorLayout>
 </layout>

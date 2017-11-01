@@ -35,13 +35,19 @@
         android:orientation="horizontal">
 
         <EditText
+            android:id="@+id/text_message"
             android:layout_width="match_parent"
             android:layout_height="40dp"
-            android:layout_weight="0.2" />
+            android:enabled="false"
+            android:layout_weight="0.2"
+            android:inputType="text"
+            tools:ignore="LabelFor" />
 
         <Button
+            android:id="@+id/btn_send_message"
             android:layout_width="match_parent"
             android:layout_height="40dp"
+            android:enabled="false"
             android:layout_weight="0.6" />
     </LinearLayout>
 

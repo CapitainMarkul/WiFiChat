@@ -18,6 +18,7 @@ import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.TextView;
 
 import java.io.DataInputStream;
@@ -45,6 +46,8 @@ public class MainActivity extends AppCompatActivity {
     private RecyclerView.LayoutManager layoutManager;
 
     private TextView footer;
+    private Button sendMessage;
+    private EditText textMessage;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,6 +63,17 @@ public class MainActivity extends AppCompatActivity {
         intentFilter.addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION);
         intentFilter.addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION);
         intentFilter.addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION);
+
+        /**
+         *  SendMessage
+         * */
+        textMessage = findViewById(R.id.text_message);
+
+        sendMessage = findViewById(R.id.btn_send_message);
+        sendMessage.setOnClickListener(view -> {
+            sendMessage(textMessage.getText().toString());
+            textMessage.setText("");
+        });
 
 
         Button button = findViewById(R.id.btn_start_search);
@@ -253,7 +267,10 @@ public class MainActivity extends AppCompatActivity {
     private void startReadingResponse() throws IOException {
         while (!Thread.currentThread().isInterrupted()
                 && !socket.isClosed()) {
-            dataInputStream.readUTF();
+//            dataInputStream.readUTF();
+
+            // TODO: 01.11.2017 То, что пришло помещаем в REcyclerView
+            messagesAdapter.setMessages(dataInputStream.readUTF());
         }
     }
 

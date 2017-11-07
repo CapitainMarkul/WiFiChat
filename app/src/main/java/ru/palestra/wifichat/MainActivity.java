@@ -1,17 +1,11 @@
 package ru.palestra.wifichat;
 
-import android.content.BroadcastReceiver;
-import android.content.Context;
+import android.app.Activity;
+import android.content.ComponentName;
 import android.content.Intent;
-import android.content.IntentFilter;
-import android.net.NetworkInfo;
-import android.net.wifi.WpsInfo;
-import android.net.wifi.p2p.WifiP2pConfig;
-import android.net.wifi.p2p.WifiP2pDevice;
-import android.net.wifi.p2p.WifiP2pDeviceList;
-import android.net.wifi.p2p.WifiP2pInfo;
-import android.net.wifi.p2p.WifiP2pManager;
+import android.content.ServiceConnection;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -21,21 +15,12 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.util.List;
+import com.pgrenaud.android.p2p.entity.PeerEntity;
+import com.pgrenaud.android.p2p.service.PeerService;
 
 public class MainActivity extends AppCompatActivity {
 
     private final static String TAG = MainActivity.class.getSimpleName();
-
-    private WifiP2pManager manager;
-    private WifiP2pManager.Channel channel;
-    private final IntentFilter intentFilter = new IntentFilter();
 
     private RecyclerView clientsRecyclerView;
     private ClientsAdapter clientsAdapter;
@@ -49,6 +34,11 @@ public class MainActivity extends AppCompatActivity {
     private Button sendMessage;
     private EditText textMessage;
 
+    private PeerEntity currentPeer;
+    private PeerService service; // TODO: 06.11.2017 createPeerService
+    private boolean bound = false;
+    private Intent nfcIntent;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -59,10 +49,10 @@ public class MainActivity extends AppCompatActivity {
 
         footer = findViewById(R.id.txt_peek);
 
-        intentFilter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
-        intentFilter.addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION);
-        intentFilter.addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION);
-        intentFilter.addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION);
+//        intentFilter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
+//        intentFilter.addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION);
+//        intentFilter.addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION);
+//        intentFilter.addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION);
 
         /**
          *  SendMessage
@@ -70,10 +60,7 @@ public class MainActivity extends AppCompatActivity {
         textMessage = findViewById(R.id.text_message);
 
         sendMessage = findViewById(R.id.btn_send_message);
-        sendMessage.setOnClickListener(view -> {
-            sendMessage(textMessage.getText().toString());
-            textMessage.setText("");
-        });
+// TODO: 06.11.2017 send Message
 
 
         Button button = findViewById(R.id.btn_start_search);
@@ -88,11 +75,118 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        manager = (WifiP2pManager) getSystemService(WIFI_P2P_SERVICE);
-        channel = manager.initialize(this, getMainLooper(), null);
-
-        registerReceiver(broadcastReceiver, intentFilter);
+        startSdkService();
     }
+
+    /**
+     * StartSdkService
+     */
+
+    private void startSdkService() {
+        Intent intent = new Intent(this, PeerService.class);
+//        intent.putExtra(PeerService.EXTRA_DIRECTORY_PATH, directoryPatch);
+        intent.putExtra(PeerService.EXTRA_PEER_NAME, "Тестовое устройство");
+        startService(intent);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        Intent intent = new Intent(this, PeerService.class);
+        stopService(intent);
+    }
+
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+
+        Intent intent = new Intent(this, PeerService.class);
+        bindService(intent, serviceConnection, BIND_AUTO_CREATE);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+
+        if (bound) {
+            unbindService(serviceConnection);
+            bound = false;
+            service.setListener(null);
+        }
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+
+        setIntent(intent);
+    }
+
+    private ServiceConnection serviceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
+
+            PeerService.PeerServiceBinder binder = (PeerService.PeerServiceBinder) iBinder;
+            service = binder.getService();
+            service.setListener(listener);
+
+            service.registerNfcCallback(getActivity());
+            service.handleNfcIntent(nfcIntent);
+
+//            service.getPeerRepository(); // TODO: Initialize your UI
+//            service.getSelfPeerEntity(); // TODO: Initialize your UI
+//            service.getFileRepository(); // TODO: Initialize your UI
+
+            service.getPeerHive().sync(); // Start workers for known peers
+
+            nfcIntent = null;
+            bound = true;
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName componentName) {
+
+            service.setListener(null);
+
+            service.unregisterNfcCallback(getActivity());
+
+            bound = false;
+        }
+    };
+
+
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        nfcIntent = getIntent();
+    }
+
+    private PeerService.PeerServiceListener listener = new PeerService.PeerServiceListener() {
+        @Override
+        public void onPeerConnection(PeerEntity peerEntity) {
+            Log.e(TAG, "onPeerConnection: " + peerEntity.getDisplayName());
+        }
+
+        @Override
+        public void onPeerDisplayNameUpdate(PeerEntity peerEntity) {
+            Log.e(TAG, "onPeerDisplayNameUpdate: " + peerEntity.getDisplayName());
+        }
+
+        @Override
+        public void onPeerLocationUpdate(PeerEntity peerEntity) {
+            Log.e(TAG, "onPeerLocationUpdate: " + peerEntity.getDisplayName());
+        }
+
+        @Override
+        public void onPeerDirectoryChange(PeerEntity peerEntity) {
+            Log.e(TAG, "onPeerDirectoryChange: " + peerEntity.getDisplayName());
+        }
+    };
+
 
     private void setupClientsRecyclerView() {
         clientsRecyclerView = findViewById(R.id.recyclerView);
@@ -114,134 +208,106 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startSearchingClients() {
-        manager.discoverPeers(channel, actionListener);
+
     }
 
     private void stopSearchingClients() {
-        manager.stopPeerDiscovery(channel, actionListener);
+
     }
 
-//    WIFI_P2P_STATE_CHANGED_ACTION
-//    Показывает включен ли Wi-Fi P2P
 
-//    WIFI_P2P_PEERS_CHANGED_ACTION
-//    Указывает, что список доступных узлов изменился.
+    /**
+     * MessageListener
+     */
 
-//    WIFI_P2P_CONNECTION_CHANGED_ACTION
-//    Указывает, что состояние Wi-Fi P2P соединения изменилось.
-
-//    WIFI_P2P_THIS_DEVICE_CHANGED_ACTION
-//    Указывает, что детали конфигурации этого устройства изменились.
-
-    BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            String action = intent.getAction();
-            if (WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION.equals(action)) {
-                Log.e("STATE_CHANGED_ACTION:", "true");
-                // UI update to indicate wifi p2p status.
-                int state = intent.getIntExtra(WifiP2pManager.EXTRA_WIFI_STATE, -1);
-                if (state == WifiP2pManager.WIFI_P2P_STATE_ENABLED) {
-
-                } else {
-
-                }
-//            Log.d(Activity.TAG, "P2P state changed - " + state);
-            } else if (WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION.equals(action)) {
-                Log.e("PEERS_CHANGED_ACTION:", "true");
-
-                if (manager != null) {
-                    manager.requestPeers(channel, peerListListener);
-                }
-            } else if (WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION.equals(action)) {
-                Log.e("ON_CHANGED_ACTION:", "true");
-                if (manager == null) {
-                    return;
-                }
-
-                NetworkInfo networkInfo = intent.getParcelableExtra(WifiP2pManager.EXTRA_NETWORK_INFO);
-
-                if (networkInfo.isConnected()) {
-
-                } else {
-
-                }
-            } else if (WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION.equals(action)) {
-                Log.e("DEVICE_CHANGED_ACTION:", "true");
-
-            }
-        }
-    };
+    /**
+     * DiscoveryListener
+     */
 
     /**
      * PeerListener
      */
 
-    WifiP2pManager.PeerListListener peerListListener = new WifiP2pManager.PeerListListener() {
-        @Override
-        public void onPeersAvailable(WifiP2pDeviceList wifiP2pDeviceList) {
-            Log.e(TAG, String.format("Found %d devices", wifiP2pDeviceList.getDeviceList().size()));
-            clientsAdapter.setClients(
-                    (List<WifiP2pDevice>) wifiP2pDeviceList.getDeviceList());
-        }
-    };
+
+//
+//    WifiP2pManager.PeerListListener peerListListener = new WifiP2pManager.PeerListListener() {
+//        @Override
+//        public void onPeersAvailable(WifiP2pDeviceList wifiP2pDeviceList) {
+//            Log.e(TAG, String.format("Found %d devices", wifiP2pDeviceList.getDeviceList().size()));
+//            clientsAdapter.setClients(
+//                    (List<WifiP2pDevice>) wifiP2pDeviceList.getDeviceList());
+//        }
+//    };
 
     /**
      * ItemClick
      */
 
     interface ItemClick {
-        void onItemClick(WifiP2pDevice device);
+        void onItemClick(PeerEntity device);
     }
 
-    private ItemClick itemClickListener = device -> connectToDevice(device);
-
-    private void connectToDevice(WifiP2pDevice device) {
-        manager.connect(channel, createWifiP2pConfig(device), actionListener);
-        manager.requestConnectionInfo(channel, connectionInfoListener);
-    }
-
-    private WifiP2pConfig createWifiP2pConfig(WifiP2pDevice wifiP2pDevice) {
-        WifiP2pConfig wifiP2pConfig = new WifiP2pConfig();
-        wifiP2pConfig.deviceAddress = wifiP2pDevice.deviceAddress;
-        wifiP2pConfig.wps.setup = WpsInfo.PBC;
-        return wifiP2pConfig;
-    }
-
-    /**
-     * ResultConnect
-     */
-
-    WifiP2pManager.ActionListener actionListener = new WifiP2pManager.ActionListener() {
+    private ItemClick itemClickListener = new ItemClick() {
         @Override
-        public void onSuccess() {
-
-        }
-
-        @Override
-        public void onFailure(int i) {
+        public void onItemClick(PeerEntity device) {
 
         }
     };
 
-    WifiP2pManager.ConnectionInfoListener connectionInfoListener = new WifiP2pManager.ConnectionInfoListener() {
-        @Override
-        public void onConnectionInfoAvailable(WifiP2pInfo wifiP2pInfo) {
-            manager.stopPeerDiscovery(channel, actionListener);
+    public Activity getActivity() {
+        return this;
+    }
+}
 
-            footer.setText("Chat with: " + wifiP2pInfo.groupOwnerAddress);
+//    private ItemClick itemClickListener = device -> {
+////        Log.d(TAG, "Выбрано устройство: " + device.getPeerId());
+////        currentPeer = device;
+////        connectToDevice(device);
+//    };
 
-            if (wifiP2pInfo.isGroupOwner) {
-                setupServerSocket(wifiP2pInfo);
-            } else {
-                setupClientSocket(wifiP2pInfo);
-            }
-        }
-    };
+//    private void connectToDevice(WifiP2pDevice device) {
+//        manager.connect(channel, createWifiP2pConfig(device), actionListener);
+//        manager.requestConnectionInfo(channel, connectionInfoListener);
+//    }
 
-    /**
-     * Setup Sockets
-     */
+//    private WifiP2pConfig createWifiP2pConfig(WifiP2pDevice wifiP2pDevice) {
+//        WifiP2pConfig wifiP2pConfig = new WifiP2pConfig();
+//        wifiP2pConfig.deviceAddress = wifiP2pDevice.deviceAddress;
+//        wifiP2pConfig.wps.setup = WpsInfo.PBC;
+//        return wifiP2pConfig;
+//    }
+
+
+//    WifiP2pManager.ActionListener actionListener = new WifiP2pManager.ActionListener() {
+//        @Override
+//        public void onSuccess() {
+//
+//        }
+//
+//        @Override
+//        public void onFailure(int i) {
+//
+//        }
+//    };
+
+//    WifiP2pManager.ConnectionInfoListener connectionInfoListener = new WifiP2pManager.ConnectionInfoListener() {
+//        @Override
+//        public void onConnectionInfoAvailable(WifiP2pInfo wifiP2pInfo) {
+//            manager.stopPeerDiscovery(channel, actionListener);
+//
+//            footer.setText("Chat with: " + wifiP2pInfo.groupOwnerAddress);
+//
+//            if (wifiP2pInfo.isGroupOwner) {
+//                setupServerSocket(wifiP2pInfo);
+//            } else {
+//                setupClientSocket(wifiP2pInfo);
+//            }
+//        }
+//    };
+
+/**
+ * Setup Sockets
+ */
 
 //    public Observable<String> send(String message) {
 //        return Observable.just(message)
@@ -255,84 +321,84 @@ public class MainActivity extends AppCompatActivity {
 //                .retry(MAX_RETRY_COUNT)
 //                .subscribeOn(Schedulers.io());
 //    }
-    private void checkConnection() {
-
-    }
-
-    private DataOutputStream dataOutputStream = null;
-
-    private DataInputStream dataInputStream = null;
-    private Socket socket = null;
-
-    private void startReadingResponse() throws IOException {
-        while (!Thread.currentThread().isInterrupted()
-                && !socket.isClosed()) {
-//            dataInputStream.readUTF();
-
-            // TODO: 01.11.2017 То, что пришло помещаем в REcyclerView
-            messagesAdapter.setMessages(dataInputStream.readUTF());
-        }
-    }
-
-    // TODO: 01.11.2017 Нажатие кнопки, отправлять сообщения
-    private void sendMessage(String message) {
-        try {
-            dataOutputStream.writeUTF(message);
-            dataOutputStream.flush();
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-
-    private void setupServerSocket(WifiP2pInfo wifiP2pInfo) {
-        new Thread(() -> {
-            ServerSocket serverSocket = null;
-            try {
-                serverSocket = new ServerSocket(1001);
-                while (true) {
-                    socket = serverSocket.accept(); //ожидание подключения
-
-                    dataOutputStream = new DataOutputStream(socket.getOutputStream());
-                    dataInputStream = new DataInputStream(socket.getInputStream());
-
-                    startReadingResponse();
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        });
-    }
-
-    private void setupClientSocket(WifiP2pInfo wifiP2pInfo) {
-        new Thread(() -> {
-            try {
-                socket = new Socket();
-                socket.connect(
-                        new InetSocketAddress(wifiP2pInfo.groupOwnerAddress, 1001),
-                        5000);
-
-                dataOutputStream = new DataOutputStream(socket.getOutputStream());
-                dataInputStream = new DataInputStream(socket.getInputStream());
-
-                startReadingResponse();
-
-            } catch (IOException e) {
-                e.printStackTrace();
-            } finally {
-                if (socket != null) {
-                    try {
-                        socket.close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-        }).start();
-    }
+//    private void checkConnection() {
+//
+//    }
+//
+//    private DataOutputStream dataOutputStream = null;
+//
+//    private DataInputStream dataInputStream = null;
+//    private Socket socket = null;
+//
+//    private void startReadingResponse() throws IOException {
+//        while (!Thread.currentThread().isInterrupted()
+//                && !socket.isClosed()) {
+////            dataInputStream.readUTF();
+//
+//            // TODO: 01.11.2017 То, что пришло помещаем в REcyclerView
+//            messagesAdapter.setMessages(dataInputStream.readUTF());
+//        }
+//    }
+//
+//    // TODO: 01.11.2017 Нажатие кнопки, отправлять сообщения
+//    private void sendMessage(String message) {
+//        try {
+//            dataOutputStream.writeUTF(message);
+//            dataOutputStream.flush();
+//
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+//    }
+//
+//
+//    private void setupServerSocket(WifiP2pInfo wifiP2pInfo) {
+//        new Thread(() -> {
+//            ServerSocket serverSocket = null;
+//            try {
+//                serverSocket = new ServerSocket(1001);
+//                while (true) {
+//                    socket = serverSocket.accept(); //ожидание подключения
+//
+//                    dataOutputStream = new DataOutputStream(socket.getOutputStream());
+//                    dataInputStream = new DataInputStream(socket.getInputStream());
+//
+//                    startReadingResponse();
+//                }
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
+//        });
+//    }
+//
+//    private void setupClientSocket(WifiP2pInfo wifiP2pInfo) {
+//        new Thread(() -> {
+//            try {
+//                socket = new Socket();
+//                socket.connect(
+//                        new InetSocketAddress(wifiP2pInfo.groupOwnerAddress, 1001),
+//                        5000);
+//
+//                dataOutputStream = new DataOutputStream(socket.getOutputStream());
+//                dataInputStream = new DataInputStream(socket.getInputStream());
+//
+//                startReadingResponse();
+//
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            } finally {
+//                if (socket != null) {
+//                    try {
+//                        socket.close();
+//                    } catch (IOException e) {
+//                        e.printStackTrace();
+//                    }
+//                }
+//            }
+//        }).start();
+//    }
 //
 //    private Socket createClientSocket() {
 //
 //    }
-}
+

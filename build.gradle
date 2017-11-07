@@ -19,6 +19,14 @@ allprojects {
     repositories {
         google()
         jcenter()
+
+        maven {
+            url "http://maven.bridgefy.com/artifactory/libs-release-local"
+            artifactUrls=["http://jcenter.bintray.com/"]
+
+//            url "http://p2pkit.io/maven2"
+//            url "https://jitpack.io"  // Add this line
+        }
     }
 }
 

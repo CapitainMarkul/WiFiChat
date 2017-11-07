@@ -1,6 +1,5 @@
 package ru.palestra.wifichat;
 
-import android.net.wifi.p2p.WifiP2pDevice;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -8,8 +7,11 @@ import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.pgrenaud.android.p2p.entity.PeerEntity;
+
 import java.util.ArrayList;
 import java.util.List;
+
 
 /**
  * Created by Dmitry on 01.11.2017.
@@ -17,12 +19,16 @@ import java.util.List;
 
 public class ClientsAdapter extends RecyclerView.Adapter<ClientsAdapter.ViewHolder> {
 
-    private List<WifiP2pDevice> clients = new ArrayList<>();
+    private List<PeerEntity> clients = new ArrayList<>();
     private MainActivity.ItemClick listener;
 
-    public void setClients(List<WifiP2pDevice> clients) {
-        this.clients.clear();
-        this.clients.addAll(clients);
+    public void setClient(PeerEntity client) {
+        clients.add(client);
+        notifyDataSetChanged();
+    }
+
+    public void removeClient(PeerEntity client) {
+        clients.remove(client);
         notifyDataSetChanged();
     }
 
@@ -39,8 +45,8 @@ public class ClientsAdapter extends RecyclerView.Adapter<ClientsAdapter.ViewHold
 
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
-        holder.clientName.setText(clients.get(position).deviceName);
-        holder.clientMac.setText(clients.get(position).deviceAddress);
+        holder.clientName.setText(clients.get(position).getDisplayName());
+        holder.clientMac.setText(clients.get(position).getIpAddress());
 
         holder.container.setOnClickListener(view -> listener.onItemClick(clients.get(position)));
     }

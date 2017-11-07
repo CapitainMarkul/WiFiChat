@@ -1,43 +1,58 @@
 package ru.palestra.wifichat;
 
-import android.app.Activity;
-import android.content.ComponentName;
-import android.content.Intent;
-import android.content.ServiceConnection;
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.os.IBinder;
+import android.support.annotation.Nullable;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
-import com.pgrenaud.android.p2p.entity.PeerEntity;
-import com.pgrenaud.android.p2p.service.PeerService;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.nearby.Nearby;
+import com.google.android.gms.nearby.connection.AdvertisingOptions;
+import com.google.android.gms.nearby.connection.ConnectionInfo;
+import com.google.android.gms.nearby.connection.ConnectionLifecycleCallback;
+import com.google.android.gms.nearby.connection.ConnectionResolution;
+import com.google.android.gms.nearby.connection.ConnectionsStatusCodes;
+import com.google.android.gms.nearby.connection.DiscoveredEndpointInfo;
+import com.google.android.gms.nearby.connection.DiscoveryOptions;
+import com.google.android.gms.nearby.connection.EndpointDiscoveryCallback;
+import com.google.android.gms.nearby.connection.Payload;
+import com.google.android.gms.nearby.connection.PayloadCallback;
+import com.google.android.gms.nearby.connection.PayloadTransferUpdate;
+import com.google.android.gms.nearby.connection.Strategy;
+
+import ru.palestra.wifichat.model.DeviceInfo;
 
 public class MainActivity extends AppCompatActivity {
 
     private final static String TAG = MainActivity.class.getSimpleName();
-
     private RecyclerView clientsRecyclerView;
     private ClientsAdapter clientsAdapter;
 
     private RecyclerView messagesRecyclerView;
     private MessagesAdapter messagesAdapter;
 
-    private RecyclerView.LayoutManager layoutManager;
-
     private TextView footer;
     private Button sendMessage;
+    private Button searchClients;
     private EditText textMessage;
 
-    private PeerEntity currentPeer;
-    private PeerService service; // TODO: 06.11.2017 createPeerService
-    private boolean bound = false;
-    private Intent nfcIntent;
+    private String currentEndPoint = "";
+
+    private GoogleApiClient googleApiClient;
+    // client's name that's visible to other devices when connecting
+    public static final String CLIENT_NAME = "New NickName";
+    public static final String SERVICE_ID = "palestra.wifichat";
+    public static final Strategy STRATEGY = Strategy.P2P_CLUSTER;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,21 +64,38 @@ public class MainActivity extends AppCompatActivity {
 
         footer = findViewById(R.id.txt_peek);
 
-//        intentFilter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
-//        intentFilter.addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION);
-//        intentFilter.addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION);
-//        intentFilter.addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION);
-
         /**
          *  SendMessage
          * */
         textMessage = findViewById(R.id.text_message);
 
         sendMessage = findViewById(R.id.btn_send_message);
-// TODO: 06.11.2017 send Message
+        sendMessage.setOnClickListener(view -> {
+            if (currentEndPoint != null) {
+                Toast.makeText(getApplicationContext(),
+                        "Send to" + currentEndPoint, Toast.LENGTH_SHORT).show();
+                Nearby.Connections.sendPayload(
+                        googleApiClient,
+                        currentEndPoint,
+                        Payload.fromBytes(textMessage.getText().toString().getBytes())
+                ).setResultCallback(status -> {
+                    if (status.isSuccess()) {
+                        Toast.makeText(getApplicationContext(),
+                                "Send OK!!", Toast.LENGTH_SHORT).show();
+                        // We're discovering!
+                    } else {
+                        Toast.makeText(getApplicationContext(),
+                                "Send FAIL!!", Toast.LENGTH_SHORT).show();
+                        // We were unable to start discovering.
+                    }
+                });
 
+                messagesAdapter.setMessages(textMessage.getText().toString());
+                textMessage.setText("");
+            }
+        });
 
-        Button button = findViewById(R.id.btn_start_search);
+        Button button = findViewById(R.id.btn_start_nearby);
 
         button.setOnClickListener((View view) -> {
             if (button.getText().toString().contains("Star")) {
@@ -75,118 +107,265 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        startSdkService();
+        searchClients = findViewById(R.id.btn_start_search);
+        searchClients.setOnClickListener(view ->
+                Nearby.Connections.startDiscovery(
+                        googleApiClient,
+                        SERVICE_ID,
+                        endpointDiscoveryCallback,
+                        new DiscoveryOptions(STRATEGY))
+                        .setResultCallback(
+                                status -> {
+                                    if (status.isSuccess()) {
+                                        Toast.makeText(getApplicationContext(),
+                                                "We're discovering!", Toast.LENGTH_SHORT).show();
+                                        // We're discovering!
+                                    } else {
+                                        Toast.makeText(getApplicationContext(),
+                                                "We were unable to start discovering", Toast.LENGTH_SHORT).show();
+                                        // We were unable to start discovering.
+                                    }
+                                }));
+
+        checkPermition();
+
+        createGoogleApiClient();
     }
 
     /**
-     * StartSdkService
+     * EndpointDiscoveryCallback()
+     * Оповещает о найденных точках доступа
      */
 
-    private void startSdkService() {
-        Intent intent = new Intent(this, PeerService.class);
-//        intent.putExtra(PeerService.EXTRA_DIRECTORY_PATH, directoryPatch);
-        intent.putExtra(PeerService.EXTRA_PEER_NAME, "Тестовое устройство");
-        startService(intent);
+    private final EndpointDiscoveryCallback endpointDiscoveryCallback = new EndpointDiscoveryCallback() {
+        @Override
+        public void onEndpointFound(
+                String endpointId, DiscoveredEndpointInfo discoveredEndpointInfo) {
+            Toast.makeText(getApplicationContext(),
+                    "An endpoint was found!" + endpointId, Toast.LENGTH_SHORT).show();
+
+            clientsAdapter.setClient(new DeviceInfo(endpointId, discoveredEndpointInfo.getEndpointName()));
+        }
+
+        @Override
+        public void onEndpointLost(String endpointId) {
+            Toast.makeText(getApplicationContext(),
+                    "A previously discovered endpoint has gone away", Toast.LENGTH_SHORT).show();
+
+        }
+    };
+
+    /**
+     * Проверка разрешений приложения (Для android 6.0 и выше)
+     */
+
+    private void checkPermition() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            requestPermission();
+        }
     }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-
-        Intent intent = new Intent(this, PeerService.class);
-        stopService(intent);
+    public void requestPermission() {
+        ActivityCompat.requestPermissions(this,
+                new String[]{
+                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                }, 0);  // TODO: 07.11.2017 RequestCode ?
     }
 
+
+    private void createGoogleApiClient() {
+        googleApiClient = new GoogleApiClient.Builder(this)
+                .addConnectionCallbacks(connectionCallbacks)
+                .addOnConnectionFailedListener(connectionFailedListener)
+                .addApi(Nearby.CONNECTIONS_API)
+                .build();
+    }
+
+    /**
+     * GoogleApiClient.ConnectionCallbacks
+     * ???????????
+     */
+
+    GoogleApiClient.ConnectionCallbacks connectionCallbacks = new GoogleApiClient.ConnectionCallbacks() {
+        @Override
+        public void onConnected(@Nullable Bundle bundle) {
+
+        }
+
+        @Override
+        public void onConnectionSuspended(int i) {
+
+        }
+    };
+
+    /**
+     * GoogleApiClient.OnConnectionFailedListener
+     * Неудачи подключения
+     */
+    GoogleApiClient.OnConnectionFailedListener connectionFailedListener = connectionResult -> {
+
+    };
 
     @Override
     protected void onStart() {
         super.onStart();
 
-        Intent intent = new Intent(this, PeerService.class);
-        bindService(intent, serviceConnection, BIND_AUTO_CREATE);
+        googleApiClient.connect();
     }
 
     @Override
     protected void onStop() {
         super.onStop();
 
-        if (bound) {
-            unbindService(serviceConnection);
-            bound = false;
-            service.setListener(null);
+        if (googleApiClient != null && googleApiClient.isConnected()) {
+            googleApiClient.disconnect();
         }
     }
 
-    @Override
-    protected void onNewIntent(Intent intent) {
-        super.onNewIntent(intent);
+    /**
+     * startSearchingClients()
+     * Сканирование сети, поиск клиентов
+     */
 
-        setIntent(intent);
+    private void startSearchingClients() {
+        Toast.makeText(getApplicationContext(),
+                "start Advertising", Toast.LENGTH_SHORT).show();
+
+        Nearby.Connections.startAdvertising(
+                googleApiClient,
+                CLIENT_NAME,
+                SERVICE_ID,
+                connectionLifecycleCallback,
+                new AdvertisingOptions(STRATEGY))
+                .setResultCallback(result -> {
+                    if (result.getStatus().isSuccess()) {
+                        Toast.makeText(getApplicationContext(),
+                                "We're advertising!", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(getApplicationContext(),
+                                "We were unable to start advertising", Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 
-    private ServiceConnection serviceConnection = new ServiceConnection() {
+    /**
+     * startSearchingClients()
+     * Прекращение поиска клиентов
+     */
+
+    private void stopSearchingClients() {
+        Toast.makeText(getApplicationContext(),
+                "stopSearchingClients", Toast.LENGTH_SHORT).show();
+
+        clientsAdapter.clearAll();
+    }
+
+    /**
+     * ConnectionLifecycleCallback
+     * Оповещения о состоянии подключения
+     */
+
+    private ConnectionLifecycleCallback connectionLifecycleCallback = new ConnectionLifecycleCallback() {
         @Override
-        public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
+        public void onConnectionInitiated(String endPoint, ConnectionInfo connectionInfo) {
+            Toast.makeText(getApplicationContext(),
+                    "onConnectionInitiated", Toast.LENGTH_SHORT).show();
 
-            PeerService.PeerServiceBinder binder = (PeerService.PeerServiceBinder) iBinder;
-            service = binder.getService();
-            service.setListener(listener);
+            // Automatically accept the connection on both sides.
+            Nearby.Connections.acceptConnection(
+                    googleApiClient, endPoint, payloadCallback)
+                    .setResultCallback(status -> {
+                        if (!status.isSuccess()) {
+                            Toast.makeText(getApplicationContext(),
+                                    "onConnectionInitiated: OK!!!", Toast.LENGTH_SHORT).show();
+                        }
+                    });
 
-            service.registerNfcCallback(getActivity());
-            service.handleNfcIntent(nfcIntent);
-
-//            service.getPeerRepository(); // TODO: Initialize your UI
-//            service.getSelfPeerEntity(); // TODO: Initialize your UI
-//            service.getFileRepository(); // TODO: Initialize your UI
-
-            service.getPeerHive().sync(); // Start workers for known peers
-
-            nfcIntent = null;
-            bound = true;
+            currentEndPoint = endPoint;
+            footer.setText(currentEndPoint);
         }
 
         @Override
-        public void onServiceDisconnected(ComponentName componentName) {
+        public void onConnectionResult(String s, ConnectionResolution result) {
+            Toast.makeText(getApplicationContext(),
+                    "onConnectionResult", Toast.LENGTH_SHORT).show();
 
-            service.setListener(null);
+            switch (result.getStatus().getStatusCode()) {
+                case ConnectionsStatusCodes.STATUS_OK:
+                    Toast.makeText(getApplicationContext(),
+                            "Connect: OK", Toast.LENGTH_SHORT).show();
+                    break;
+                case ConnectionsStatusCodes.STATUS_CONNECTION_REJECTED:
+                    Toast.makeText(getApplicationContext(),
+                            "Connect: FAIL", Toast.LENGTH_SHORT).show();
+                    break;
+            }
+        }
 
-            service.unregisterNfcCallback(getActivity());
+        @Override
+        public void onDisconnected(String s) {
+            Toast.makeText(getApplicationContext(),
+                    "onDisconnected", Toast.LENGTH_SHORT).show();
 
-            bound = false;
+            currentEndPoint = null;
+            footer.setText("PICK"); // FIXME: 07.11.2017 Set Default Text
         }
     };
 
 
+    /**
+     * PayloadCallback
+     * Прием сообщений от других клиентов
+     */
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-
-        nfcIntent = getIntent();
-    }
-
-    private PeerService.PeerServiceListener listener = new PeerService.PeerServiceListener() {
+    private PayloadCallback payloadCallback = new PayloadCallback() {
         @Override
-        public void onPeerConnection(PeerEntity peerEntity) {
-            Log.e(TAG, "onPeerConnection: " + peerEntity.getDisplayName());
+        public void onPayloadReceived(String endPointId, Payload payload) {
+            messagesAdapter.setMessages(new String(payload.asBytes()));
         }
 
         @Override
-        public void onPeerDisplayNameUpdate(PeerEntity peerEntity) {
-            Log.e(TAG, "onPeerDisplayNameUpdate: " + peerEntity.getDisplayName());
-        }
+        public void onPayloadTransferUpdate(String endPointId, PayloadTransferUpdate payloadTransferUpdate) {
 
-        @Override
-        public void onPeerLocationUpdate(PeerEntity peerEntity) {
-            Log.e(TAG, "onPeerLocationUpdate: " + peerEntity.getDisplayName());
-        }
-
-        @Override
-        public void onPeerDirectoryChange(PeerEntity peerEntity) {
-            Log.e(TAG, "onPeerDirectoryChange: " + peerEntity.getDisplayName());
         }
     };
 
+    /**
+     * requestConnection
+     * Запрос на соединение с клиентом
+     */
+
+    private void requestConnection(DeviceInfo client) {
+        Nearby.Connections.requestConnection(
+                googleApiClient,
+                CLIENT_NAME,
+                client.getClientNearbyKey(),
+                connectionLifecycleCallback)
+                .setResultCallback(
+                        status -> {
+                            if (status.isSuccess()) {
+                                Toast.makeText(getApplicationContext(),
+                                        "We successfully requested a connection", Toast.LENGTH_SHORT).show();
+
+                                currentEndPoint = client.getClientNearbyKey();
+                                footer.setText(client.getClientNearbyKey());
+                            } else {
+                                Toast.makeText(getApplicationContext(),
+                                        "Nearby Connections failed", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                );
+    }
+
+    /**
+     * ItemClick
+     */
+
+    interface ItemClick {
+        void onItemClick(DeviceInfo client);
+    }
+
+    private ItemClick itemClickListener = client -> requestConnection(client);
 
     private void setupClientsRecyclerView() {
         clientsRecyclerView = findViewById(R.id.recyclerView);
@@ -206,199 +385,4 @@ public class MainActivity extends AppCompatActivity {
         messagesAdapter = new MessagesAdapter();
         messagesRecyclerView.setAdapter(messagesAdapter);
     }
-
-    private void startSearchingClients() {
-
-    }
-
-    private void stopSearchingClients() {
-
-    }
-
-
-    /**
-     * MessageListener
-     */
-
-    /**
-     * DiscoveryListener
-     */
-
-    /**
-     * PeerListener
-     */
-
-
-//
-//    WifiP2pManager.PeerListListener peerListListener = new WifiP2pManager.PeerListListener() {
-//        @Override
-//        public void onPeersAvailable(WifiP2pDeviceList wifiP2pDeviceList) {
-//            Log.e(TAG, String.format("Found %d devices", wifiP2pDeviceList.getDeviceList().size()));
-//            clientsAdapter.setClients(
-//                    (List<WifiP2pDevice>) wifiP2pDeviceList.getDeviceList());
-//        }
-//    };
-
-    /**
-     * ItemClick
-     */
-
-    interface ItemClick {
-        void onItemClick(PeerEntity device);
-    }
-
-    private ItemClick itemClickListener = new ItemClick() {
-        @Override
-        public void onItemClick(PeerEntity device) {
-
-        }
-    };
-
-    public Activity getActivity() {
-        return this;
-    }
 }
-
-//    private ItemClick itemClickListener = device -> {
-////        Log.d(TAG, "Выбрано устройство: " + device.getPeerId());
-////        currentPeer = device;
-////        connectToDevice(device);
-//    };
-
-//    private void connectToDevice(WifiP2pDevice device) {
-//        manager.connect(channel, createWifiP2pConfig(device), actionListener);
-//        manager.requestConnectionInfo(channel, connectionInfoListener);
-//    }
-
-//    private WifiP2pConfig createWifiP2pConfig(WifiP2pDevice wifiP2pDevice) {
-//        WifiP2pConfig wifiP2pConfig = new WifiP2pConfig();
-//        wifiP2pConfig.deviceAddress = wifiP2pDevice.deviceAddress;
-//        wifiP2pConfig.wps.setup = WpsInfo.PBC;
-//        return wifiP2pConfig;
-//    }
-
-
-//    WifiP2pManager.ActionListener actionListener = new WifiP2pManager.ActionListener() {
-//        @Override
-//        public void onSuccess() {
-//
-//        }
-//
-//        @Override
-//        public void onFailure(int i) {
-//
-//        }
-//    };
-
-//    WifiP2pManager.ConnectionInfoListener connectionInfoListener = new WifiP2pManager.ConnectionInfoListener() {
-//        @Override
-//        public void onConnectionInfoAvailable(WifiP2pInfo wifiP2pInfo) {
-//            manager.stopPeerDiscovery(channel, actionListener);
-//
-//            footer.setText("Chat with: " + wifiP2pInfo.groupOwnerAddress);
-//
-//            if (wifiP2pInfo.isGroupOwner) {
-//                setupServerSocket(wifiP2pInfo);
-//            } else {
-//                setupClientSocket(wifiP2pInfo);
-//            }
-//        }
-//    };
-
-/**
- * Setup Sockets
- */
-
-//    public Observable<String> send(String message) {
-//        return Observable.just(message)
-//                .doOnNext(cmd -> checkConnection())
-//                .map(cmd -> cmd.getBytes())
-//                .map(bytes -> addHeader(bytes))
-//                .map(bytes -> sendBytes(bytes))
-//                .timeout(MAX_SEND_TIMEOUT_MS, TimeUnit.MILLISECONDS)
-//                .map(result -> readAnswer())
-//                .doOnError(throwable -> disconnect())
-//                .retry(MAX_RETRY_COUNT)
-//                .subscribeOn(Schedulers.io());
-//    }
-//    private void checkConnection() {
-//
-//    }
-//
-//    private DataOutputStream dataOutputStream = null;
-//
-//    private DataInputStream dataInputStream = null;
-//    private Socket socket = null;
-//
-//    private void startReadingResponse() throws IOException {
-//        while (!Thread.currentThread().isInterrupted()
-//                && !socket.isClosed()) {
-////            dataInputStream.readUTF();
-//
-//            // TODO: 01.11.2017 То, что пришло помещаем в REcyclerView
-//            messagesAdapter.setMessages(dataInputStream.readUTF());
-//        }
-//    }
-//
-//    // TODO: 01.11.2017 Нажатие кнопки, отправлять сообщения
-//    private void sendMessage(String message) {
-//        try {
-//            dataOutputStream.writeUTF(message);
-//            dataOutputStream.flush();
-//
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-//    }
-//
-//
-//    private void setupServerSocket(WifiP2pInfo wifiP2pInfo) {
-//        new Thread(() -> {
-//            ServerSocket serverSocket = null;
-//            try {
-//                serverSocket = new ServerSocket(1001);
-//                while (true) {
-//                    socket = serverSocket.accept(); //ожидание подключения
-//
-//                    dataOutputStream = new DataOutputStream(socket.getOutputStream());
-//                    dataInputStream = new DataInputStream(socket.getInputStream());
-//
-//                    startReadingResponse();
-//                }
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-//        });
-//    }
-//
-//    private void setupClientSocket(WifiP2pInfo wifiP2pInfo) {
-//        new Thread(() -> {
-//            try {
-//                socket = new Socket();
-//                socket.connect(
-//                        new InetSocketAddress(wifiP2pInfo.groupOwnerAddress, 1001),
-//                        5000);
-//
-//                dataOutputStream = new DataOutputStream(socket.getOutputStream());
-//                dataInputStream = new DataInputStream(socket.getInputStream());
-//
-//                startReadingResponse();
-//
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            } finally {
-//                if (socket != null) {
-//                    try {
-//                        socket.close();
-//                    } catch (IOException e) {
-//                        e.printStackTrace();
-//                    }
-//                }
-//            }
-//        }).start();
-//    }
-//
-//    private Socket createClientSocket() {
-//
-//    }
-

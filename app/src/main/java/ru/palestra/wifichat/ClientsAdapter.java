@@ -7,10 +7,10 @@ import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import com.pgrenaud.android.p2p.entity.PeerEntity;
-
 import java.util.ArrayList;
 import java.util.List;
+
+import ru.palestra.wifichat.model.DeviceInfo;
 
 
 /**
@@ -19,16 +19,21 @@ import java.util.List;
 
 public class ClientsAdapter extends RecyclerView.Adapter<ClientsAdapter.ViewHolder> {
 
-    private List<PeerEntity> clients = new ArrayList<>();
+    private List<DeviceInfo> clients = new ArrayList<>();
     private MainActivity.ItemClick listener;
 
-    public void setClient(PeerEntity client) {
+    public void setClient(DeviceInfo client) {
         clients.add(client);
         notifyDataSetChanged();
     }
 
-    public void removeClient(PeerEntity client) {
+    public void removeClient(DeviceInfo client) {
         clients.remove(client);
+        notifyDataSetChanged();
+    }
+
+    public void clearAll() {
+        clients.clear();
         notifyDataSetChanged();
     }
 
@@ -45,8 +50,8 @@ public class ClientsAdapter extends RecyclerView.Adapter<ClientsAdapter.ViewHold
 
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
-        holder.clientName.setText(clients.get(position).getDisplayName());
-        holder.clientMac.setText(clients.get(position).getIpAddress());
+        holder.clientName.setText(clients.get(position).getClientName());
+        holder.clientMac.setText(clients.get(position).getClientNearbyKey());
 
         holder.container.setOnClickListener(view -> listener.onItemClick(clients.get(position)));
     }

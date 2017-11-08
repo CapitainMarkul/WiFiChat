@@ -1,11 +1,16 @@
 package ru.palestra.wifichat;
 
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
+import android.speech.tts.TextToSpeech;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.widget.Button;
 import android.widget.EditText;
+
+import java.util.Locale;
+import java.util.UUID;
 
 import ru.palestra.wifichat.model.DeviceInfo;
 import ru.palestra.wifichat.services.SharedPrefServiceImpl;
@@ -22,8 +27,26 @@ public class LoginActivity extends AppCompatActivity {
 
     private DeviceInfo myDevice;
 
+    private TextToSpeech mTextToSpeech;
+    private boolean mIsInit;
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
+        mTextToSpeech = new TextToSpeech(this, i -> {
+            if (i == TextToSpeech.SUCCESS) {
+                Locale locale = new Locale("ru_RU");
+                int result = mTextToSpeech.setLanguage(locale);
+                if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                    mIsInit = false;
+                } else {
+                    mIsInit = true;
+                }
+            } else {
+                mIsInit = false;
+            }
+        });
+
+
         myDevice = sharedPrefService.getInfoAboutMyDevice();
 
         if (myDevice.getState() == DeviceInfo.State.MY_DEVICE) {
@@ -39,11 +62,15 @@ public class LoginActivity extends AppCompatActivity {
         login.setOnClickListener(view -> {
                     myDevice = DeviceInfo.myDevice(
                             userNickname.getText().toString(),
-                            java.util.UUID.randomUUID().toString());
+                            UUID.randomUUID().toString());
 
                     sharedPrefService.saveInfoAboutMyDevice(myDevice);
 
                     gotoMainActivity();
+
+//                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+//                        mTextToSpeech.speak("Привет", TextToSpeech.QUEUE_FLUSH, null, "id1");
+//                    }
                 }
         );
     }

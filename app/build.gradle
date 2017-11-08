@@ -4,7 +4,7 @@ android {
     compileSdkVersion 26
     defaultConfig {
         applicationId "ru.palestra.wifichat"
-        minSdkVersion 22
+        minSdkVersion 16
         targetSdkVersion 26
         versionCode 1
         versionName "1.0"
@@ -29,7 +29,7 @@ android {
 }
 
 dependencies {
-    compile 'com.google.android.gms:play-services-nearby:11.6.0'
+    compile 'com.google.android.gms:play-services-nearby:11.0.4'
     implementation 'io.reactivex.rxjava2:rxandroid:2.0.1'
     implementation 'io.reactivex.rxjava2:rxjava:2.1.6'
     implementation 'com.android.support:appcompat-v7:26.1.0'

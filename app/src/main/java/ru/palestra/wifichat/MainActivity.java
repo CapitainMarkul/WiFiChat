@@ -30,12 +30,15 @@ import com.google.android.gms.nearby.connection.PayloadCallback;
 import com.google.android.gms.nearby.connection.PayloadTransferUpdate;
 import com.google.android.gms.nearby.connection.Strategy;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import ru.palestra.wifichat.model.DeviceInfo;
 import ru.palestra.wifichat.services.SharedPrefServiceImpl;
 
 public class MainActivity extends AppCompatActivity {
-
     private final static String TAG = MainActivity.class.getSimpleName();
+
     private RecyclerView clientsRecyclerView;
     private ClientsAdapter clientsAdapter;
 
@@ -45,13 +48,16 @@ public class MainActivity extends AppCompatActivity {
     private TextView footer;
     private Button sendMessage;
     private Button searchClients;
+    private Button sendBroadcast;
     private EditText textMessage;
 
     private String currentEndPoint = "";
 
     private GoogleApiClient googleApiClient;
     // client's name that's visible to other devices when connecting
-    public static final String CLIENT_NAME = "New NickName";
+    private List<DeviceInfo> clients = new ArrayList<>();
+
+    public String myDeviceName;
     public static final String SERVICE_ID = "palestra.wifichat";
     public static final Strategy STRATEGY = Strategy.P2P_CLUSTER;
 
@@ -62,6 +68,8 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        setClientName(getTitle().toString());
+
         setupClientsRecyclerView();
         setupMessagesRecyclerView();
 
@@ -70,15 +78,25 @@ public class MainActivity extends AppCompatActivity {
         footer = findViewById(R.id.txt_peek);
 
         /**
+         * ChangeBroadcast
+         * */
+        sendBroadcast = findViewById(R.id.btn_broadcast);
+        sendBroadcast.setOnClickListener(view -> {
+            currentEndPoint = "";
+            Toast.makeText(getApplicationContext(), "Broadcast: On", Toast.LENGTH_SHORT).show();
+        });
+
+        /**
          *  SendMessage
          * */
         textMessage = findViewById(R.id.text_message);
 
         sendMessage = findViewById(R.id.btn_send_message);
         sendMessage.setOnClickListener(view -> {
-            if (currentEndPoint != null) {
+            if (currentEndPoint != null && !currentEndPoint.isEmpty()) {
                 Toast.makeText(getApplicationContext(),
                         "Send to" + currentEndPoint, Toast.LENGTH_SHORT).show();
+
                 Nearby.Connections.sendPayload(
                         googleApiClient,
                         currentEndPoint,
@@ -97,6 +115,29 @@ public class MainActivity extends AppCompatActivity {
 
                 messagesAdapter.setMessages(textMessage.getText().toString());
                 textMessage.setText("");
+            } else {
+                if (!clients.isEmpty()) {
+                    // TODO: 08.11.2017 Send BroadcastMessage
+                    Toast.makeText(getApplicationContext(),
+                            "Send broadcast", Toast.LENGTH_SHORT).show();
+
+                    Nearby.Connections.sendPayload(
+                            googleApiClient,
+                            createClientsEndPoints(clients),
+                            Payload.fromBytes(textMessage.getText().toString().getBytes())
+                    ).setResultCallback(status -> {
+                        if (status.isSuccess()) {
+                            Toast.makeText(getApplicationContext(),
+                                    "Send OK!!", Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(getApplicationContext(),
+                                    "Send FAIL!!", Toast.LENGTH_SHORT).show();
+                        }
+                    });
+
+                    messagesAdapter.setMessages(textMessage.getText().toString());
+                    textMessage.setText("");
+                }
             }
         });
 
@@ -137,6 +178,18 @@ public class MainActivity extends AppCompatActivity {
         createGoogleApiClient();
     }
 
+    private void setClientName(String myDeviceName) {
+        this.myDeviceName = myDeviceName;
+    }
+
+    private List<String> createClientsEndPoints(List<DeviceInfo> clients) {
+        List<String> allEndPoints = new ArrayList<>();
+        for (DeviceInfo endPoint : clients) {
+            allEndPoints.add(endPoint.getClientNearbyKey());
+        }
+        return allEndPoints;
+    }
+
     /**
      * EndpointDiscoveryCallback()
      * Оповещает о найденных точках доступа
@@ -149,8 +202,16 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(getApplicationContext(),
                     "An endpoint was found!" + endpointId, Toast.LENGTH_SHORT).show();
 
+            // TODO: 08.11.2017 add UUID other client
+            clients.add(DeviceInfo.otherDevice(
+                    discoveredEndpointInfo.getEndpointName(), endpointId, null));
+
             clientsAdapter.setClient(
                     DeviceInfo.otherDevice(discoveredEndpointInfo.getEndpointName(), endpointId, null));
+
+            //Auto Accept Connection
+            requestConnection(DeviceInfo.otherDevice(
+                    discoveredEndpointInfo.getEndpointName(), endpointId, null));
         }
 
         @Override
@@ -158,8 +219,20 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(getApplicationContext(),
                     "A previously discovered endpoint has gone away", Toast.LENGTH_SHORT).show();
 
+            clientsAdapter.removeClient(
+                    findRemoveClient(endpointId));
         }
     };
+
+    private DeviceInfo findRemoveClient(String clientEndPoint) {
+        //used i, for return deleted DeviceInfo
+        for (int i = 0; i < clients.size(); i++) {
+            if (clients.get(i).getClientNearbyKey().equals(clientEndPoint)) {
+                return clients.remove(i);
+            }
+        }
+        return DeviceInfo.empty();
+    }
 
     /**
      * Проверка разрешений приложения (Для android 6.0 и выше)
@@ -239,7 +312,7 @@ public class MainActivity extends AppCompatActivity {
 
         Nearby.Connections.startAdvertising(
                 googleApiClient,
-                CLIENT_NAME,
+                myDeviceName,
                 SERVICE_ID,
                 connectionLifecycleCallback,
                 new AdvertisingOptions(STRATEGY))
@@ -271,6 +344,15 @@ public class MainActivity extends AppCompatActivity {
      * Оповещения о состоянии подключения
      */
 
+    private DeviceInfo checkNewClient(String endPoint, ConnectionInfo connectionInfo) {
+        DeviceInfo tempClient = DeviceInfo.otherDevice(connectionInfo.getEndpointName(), endPoint, null);
+        if (!clients.contains(tempClient)) {
+            clients.add(tempClient);
+            return tempClient;
+        }
+        return DeviceInfo.empty();
+    }
+
     private ConnectionLifecycleCallback connectionLifecycleCallback = new ConnectionLifecycleCallback() {
         @Override
         public void onConnectionInitiated(String endPoint, ConnectionInfo connectionInfo) {
@@ -289,6 +371,12 @@ public class MainActivity extends AppCompatActivity {
 
             currentEndPoint = endPoint;
             footer.setText(currentEndPoint);
+
+            DeviceInfo temp = checkNewClient(endPoint, connectionInfo);
+
+            if (temp.getState() != DeviceInfo.State.EMPTY) {
+                clientsAdapter.setClient(temp);
+            }
         }
 
         @Override
@@ -344,7 +432,7 @@ public class MainActivity extends AppCompatActivity {
     private void requestConnection(DeviceInfo client) {
         Nearby.Connections.requestConnection(
                 googleApiClient,
-                CLIENT_NAME,
+                myDeviceName,
                 client.getClientNearbyKey(),
                 connectionLifecycleCallback)
                 .setResultCallback(

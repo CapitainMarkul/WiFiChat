@@ -1,19 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
-    android:id="@+id/client_container"
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/client_container"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:padding="5dp"
-    android:gravity="center">
+    android:gravity="center"
+    android:padding="5dp">
 
-    <ImageView
+    <ProgressBar
+        android:id="@+id/pb_wait_connect"
         android:layout_width="25dp"
         android:layout_height="25dp"
         android:layout_marginEnd="10dp"
-        tools:background="@color/colorPrimary"/>
+        android:layout_marginRight="10dp"
+        android:visibility="invisible"/>
 
     <android.support.constraint.ConstraintLayout
         android:layout_width="match_parent"
@@ -31,7 +32,7 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintHorizontal_bias="0.0"
             app:layout_constraintStart_toEndOf="@+id/mac"
-            app:layout_constraintTop_toTopOf="parent"/>
+            app:layout_constraintTop_toTopOf="parent" />
 
         <TextView
             android:id="@+id/name"
@@ -41,7 +42,7 @@
             android:layout_marginTop="8dp"
             android:text="Client: "
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"/>
+            app:layout_constraintTop_toTopOf="parent" />
 
         <TextView
             android:id="@+id/txt_client_mac"
@@ -54,7 +55,7 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintHorizontal_bias="0.0"
             app:layout_constraintStart_toEndOf="@+id/mac"
-            app:layout_constraintTop_toBottomOf="@+id/txt_client_name"/>
+            app:layout_constraintTop_toBottomOf="@+id/txt_client_name" />
 
         <TextView
             android:id="@+id/mac"
@@ -64,7 +65,7 @@
             android:layout_marginTop="8dp"
             android:text="Mac: "
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/name"/>
+            app:layout_constraintTop_toBottomOf="@+id/name" />
     </android.support.constraint.ConstraintLayout>
 
 </LinearLayout>

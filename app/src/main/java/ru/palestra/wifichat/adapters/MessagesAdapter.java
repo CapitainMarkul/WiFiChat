@@ -1,4 +1,4 @@
-package ru.palestra.wifichat;
+package ru.palestra.wifichat.adapters;
 
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
@@ -8,6 +8,8 @@ import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import ru.palestra.wifichat.R;
 
 /**
  * Created by Dmitry on 01.11.2017.

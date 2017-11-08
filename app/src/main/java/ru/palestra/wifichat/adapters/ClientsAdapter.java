@@ -1,15 +1,18 @@
-package ru.palestra.wifichat;
+package ru.palestra.wifichat.adapters;
 
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import ru.palestra.wifichat.MainActivity;
+import ru.palestra.wifichat.R;
 import ru.palestra.wifichat.model.DeviceInfo;
 
 
@@ -65,6 +68,7 @@ public class ClientsAdapter extends RecyclerView.Adapter<ClientsAdapter.ViewHold
         private LinearLayout container;
         private TextView clientName;
         private TextView clientMac;
+        private ProgressBar waitConnected;
 
 
         public ViewHolder(View itemView) {
@@ -73,6 +77,7 @@ public class ClientsAdapter extends RecyclerView.Adapter<ClientsAdapter.ViewHold
             container = itemView.findViewById(R.id.client_container);
             clientName = itemView.findViewById(R.id.txt_client_name);
             clientMac = itemView.findViewById(R.id.txt_client_mac);
+            waitConnected = itemView.findViewById(R.id.pb_wait_connect);
         }
     }
 }

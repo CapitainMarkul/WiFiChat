@@ -12,7 +12,7 @@ public class DeviceInfo {
         MY_DEVICE, OTHER_DEVICE, EMPTY
     }
 
-    private final String UUID;
+    private String UUID;
     private final String clientName;
     private final String clientNearbyKey;
 
@@ -20,7 +20,7 @@ public class DeviceInfo {
         return new DeviceInfo(name, null, UUID);
     }
 
-    public static DeviceInfo otherDevice(@NonNull String name, @NonNull String nearbyKey, @NonNull String UUID) {
+    public static DeviceInfo otherDevice(@NonNull String name, @NonNull String nearbyKey, @Nullable String UUID) {
         return new DeviceInfo(name, nearbyKey, UUID);
     }
 
@@ -44,6 +44,10 @@ public class DeviceInfo {
 
     public String getUUID() {
         return UUID;
+    }
+
+    public void setUUID(String UUID) {
+        this.UUID = UUID;
     }
 
     public State getState() {

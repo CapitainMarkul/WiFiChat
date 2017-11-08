@@ -31,6 +31,7 @@ import com.google.android.gms.nearby.connection.PayloadTransferUpdate;
 import com.google.android.gms.nearby.connection.Strategy;
 
 import ru.palestra.wifichat.model.DeviceInfo;
+import ru.palestra.wifichat.services.SharedPrefServiceImpl;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -54,6 +55,8 @@ public class MainActivity extends AppCompatActivity {
     public static final String SERVICE_ID = "palestra.wifichat";
     public static final Strategy STRATEGY = Strategy.P2P_CLUSTER;
 
+    private SharedPrefServiceImpl sharedPrefService = new SharedPrefServiceImpl(this);
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -61,6 +64,8 @@ public class MainActivity extends AppCompatActivity {
 
         setupClientsRecyclerView();
         setupMessagesRecyclerView();
+
+        setTitle(sharedPrefService.getInfoAboutMyDevice().getClientName());
 
         footer = findViewById(R.id.txt_peek);
 
@@ -144,7 +149,8 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(getApplicationContext(),
                     "An endpoint was found!" + endpointId, Toast.LENGTH_SHORT).show();
 
-            clientsAdapter.setClient(new DeviceInfo(endpointId, discoveredEndpointInfo.getEndpointName()));
+            clientsAdapter.setClient(
+                    DeviceInfo.otherDevice(discoveredEndpointInfo.getEndpointName(), endpointId, null));
         }
 
         @Override

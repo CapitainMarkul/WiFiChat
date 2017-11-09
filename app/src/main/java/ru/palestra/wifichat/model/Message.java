@@ -1,6 +1,7 @@
 package ru.palestra.wifichat.model;
 
 import org.parceler.Parcel;
+import org.parceler.ParcelConstructor;
 
 /**
  * Created by Dmitry on 08.11.2017.
@@ -20,6 +21,7 @@ public class Message {
 //        return new Message(from, target, text);
 //    }
 
+    @ParcelConstructor
     private Message(String from, String target, String text) {
         this.from = from;
         this.target = target;

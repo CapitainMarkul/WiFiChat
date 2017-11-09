@@ -29,13 +29,13 @@
                     android:id="@+id/btn_start_nearby"
                     android:layout_width="100dp"
                     android:layout_height="match_parent"
-                    android:text="Start Nearby"/>
+                    android:text="Start Advertising"/>
 
                 <Button
                     android:id="@+id/btn_start_search"
                     android:layout_width="100dp"
                     android:layout_height="match_parent"
-                    android:text="Start Search"/>
+                    android:text="Start Discovering"/>
 
                 <Button
                     android:id="@+id/btn_broadcast"

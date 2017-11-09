@@ -20,8 +20,10 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.ViewHo
     private List<String> messages = new ArrayList<>();
 
     public void setMessages(String textMessage) {
-        messages.add(textMessage);
-        notifyDataSetChanged();
+        if(!messages.contains(textMessage)) {
+            messages.add(textMessage);
+            notifyDataSetChanged();
+        }
     }
 
     @Override

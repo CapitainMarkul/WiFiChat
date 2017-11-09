@@ -33,6 +33,11 @@
             </intent-filter>
         </activity>
 
+        <!--<service-->
+            <!--android:name=".services.SendLostMessage"-->
+            <!--android:enabled="true"-->
+            <!--android:exported="true"-->
+            <!--android:permission="android.permission.INTERNET"/>-->
     </application>
 
 </manifest>

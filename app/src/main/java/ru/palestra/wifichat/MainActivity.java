@@ -3,7 +3,7 @@ package ru.palestra.wifichat;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.os.ParcelFileDescriptor;
+import android.os.Handler;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -32,12 +32,21 @@ import com.google.android.gms.nearby.connection.PayloadCallback;
 import com.google.android.gms.nearby.connection.PayloadTransferUpdate;
 import com.google.android.gms.nearby.connection.Strategy;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import ru.palestra.wifichat.adapters.ClientsAdapter;
 import ru.palestra.wifichat.adapters.MessagesAdapter;
 import ru.palestra.wifichat.model.DeviceInfo;
+import ru.palestra.wifichat.model.Message;
 import ru.palestra.wifichat.services.SharedPrefServiceImpl;
 
 public class MainActivity extends AppCompatActivity {
@@ -57,16 +66,87 @@ public class MainActivity extends AppCompatActivity {
     private Button sendBroadcast;
     private EditText textMessage;
 
-    private String currentEndPoint = "";
+    private boolean isDiscovering = false;
+
+    private String targetId = "";
+    private String targetName = "";
 
     private GoogleApiClient googleApiClient;
     // client's name that's visible to other devices when connecting
-    private List<DeviceInfo> clients = new ArrayList<>();
+    private List<Message> lostMessages = new ArrayList<>(); //Недоставленные сообщения
+    private Set<DeviceInfo> clients = new HashSet<>();
 
     public static final String SERVICE_ID = "palestra.wifichat";
     public static final Strategy STRATEGY = Strategy.P2P_CLUSTER;
 
+    private Timer timer;
+
+    private Map<Message, List<DeviceInfo>> broadCastBanList = new HashMap<>();
+    private boolean sendingLostMessageComplete = true;
+
     private SharedPrefServiceImpl sharedPrefService = new SharedPrefServiceImpl(this);
+
+    public interface FoundNewDevice {
+        void foundNewDevice(String endpointId, DiscoveredEndpointInfo discoveredEndpointInfo);
+    }
+
+    private FoundNewDevice foundNewDevice = (endpointId, discoveredEndpointInfo) -> {
+        // TODO: 09.11.2017  После нахождения нового устройства проверяем, ему ли предназначалось сообщение
+//
+//        debugLog(String.format("___Count Lost Message %s", lostMessages.size()));
+//
+//        try {
+////            sendLostMessage();
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+    };
+
+    private void sendLostMessage() throws IOException {
+
+        //Защита, если мы есще не успели всем передать сообщение, а уже сработало событие
+        if (sendingLostMessageComplete) {   //Lock.class ??
+            sendingLostMessageComplete = false;
+            broadCastBanList.clear();
+
+            if (!lostMessages.isEmpty()) {
+//                Intent intent = new Intent(getApplicationContext(), SendLostMessage.class);
+//                intent.putExtra("lostMessages", Parcels.wrap(lostMessages));
+//                startService(intent);
+                boolean isFoundTarget = false;
+
+                Message[] messages = new Message[lostMessages.size()];
+                messages = lostMessages.toArray(messages);
+
+                for (Message message : messages) {
+                    List<DeviceInfo> banList = new ArrayList<>();
+
+                    for (DeviceInfo client : clients) {
+                        if (message.getTargetId().equals(client.getClientNearbyKey()) ||
+                                message.getTargetName().equals(client.getClientName())) {
+
+                            //Доставили получателю
+                            sendBroadcastMessage(message, true);
+                            lostMessages.remove(message);
+                            isFoundTarget = true;
+                            debugLog("Send Lost Message on target");
+                        }
+                        banList.add(client);
+                    }
+                    broadCastBanList.put(message, banList);
+
+
+                    if (!isFoundTarget) {
+                        //Получатель не найден
+                        sendBroadcastMessage(message, true);
+                        debugLog("Send Lost Message on all");
+                    }
+                }
+            }
+
+            sendingLostMessageComplete = true;
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -88,18 +168,43 @@ public class MainActivity extends AppCompatActivity {
 
         /** ChangeBroadcast */
         sendBroadcast.setOnClickListener(view -> {
-            currentEndPoint = "";
-            Toast.makeText(getApplicationContext(), "Broadcast: On", Toast.LENGTH_SHORT).show();
+            targetId = "";
+            targetName = "";
+
+            debugLog("Broadcast: On");
+
+//            Nearby.Connections.stopAdvertising(googleApiClient);
+//            Nearby.Connections.stopDiscovery(googleApiClient);
+            Nearby.Connections.stopAllEndpoints(googleApiClient);
+            googleApiClient.reconnect();
+
+            clientsAdapter.clearAll();
+            clients.clear();
         });
 
         /** SendMessage */
         sendMessage.setOnClickListener(view -> {
             //send Current Message
-            if (currentEndPoint != null && !currentEndPoint.isEmpty()) {
-                sendTargetMessage(currentEndPoint, textMessage.getText().toString());
+            if (targetId != null && !targetId.isEmpty() &&
+                    targetName != null && !targetName.isEmpty()) {
+                try {
+                    sendBroadcastMessage(
+                            Message.newMessage(myDevice.getClientName(), targetId, targetName, textMessage.getText().toString()),
+                            false);
+                } catch (IOException e) {
+                    // TODO: 09.11.2017 Error Serialize
+                    e.printStackTrace();
+                }
             } else {
                 if (!clients.isEmpty()) {
-                    sendBroadcastMessage(textMessage.getText().toString());
+                    try {
+                        sendBroadcastMessage(
+                                Message.newMessage(myDevice.getClientName(), null, null, textMessage.getText().toString()),
+                                false);
+                    } catch (IOException e) {
+                        // TODO: 09.11.2017 Error Serialize
+                        e.printStackTrace();
+                    }
                 }
             }
         });
@@ -121,9 +226,13 @@ public class MainActivity extends AppCompatActivity {
             if (searchClients.getText().toString().contains("Star")) {
                 searchClients.setText("Stop discovering");
                 startDiscovery();
+
+                isDiscovering = true;
             } else {
                 searchClients.setText("Start discovering");
                 stopDiscovery();
+
+                isDiscovering = false;
             }
         });
 
@@ -132,7 +241,7 @@ public class MainActivity extends AppCompatActivity {
         createGoogleApiClient();
     }
 
-    private List<String> createClientsEndPoints(List<DeviceInfo> clients) {
+    private List<String> createClientsEndPoints(Set<DeviceInfo> clients) {
         List<String> allEndPoints = new ArrayList<>();
         for (DeviceInfo endPoint : clients) {
             allEndPoints.add(endPoint.getClientNearbyKey());
@@ -140,6 +249,29 @@ public class MainActivity extends AppCompatActivity {
         return allEndPoints;
     }
 
+    private void runTimerTask() {
+        timer = new Timer();
+        SendLostMessagesTask sendLostMessages = new SendLostMessagesTask();
+        timer.schedule(sendLostMessages, 5000, 20000);
+    }
+
+    class SendLostMessagesTask extends TimerTask {
+        @Override
+        public void run() {
+            runOnUiThread(() -> {
+//                if (!isDiscovering) {
+
+                try {
+                    debugLog("Timer SendLostMessage");
+
+                    sendLostMessage();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+//                }
+            });
+        }
+    }
 
     /**
      * GoogleApiClient.ConnectionCallbacks
@@ -149,12 +281,12 @@ public class MainActivity extends AppCompatActivity {
     GoogleApiClient.ConnectionCallbacks connectionCallbacks = new GoogleApiClient.ConnectionCallbacks() {
         @Override
         public void onConnected(@Nullable Bundle bundle) {
-
+            debugLog("connectionCallbacks: onConnected");
         }
 
         @Override
         public void onConnectionSuspended(int i) {
-
+            debugLog("connectionCallbacks: onConnectionSuspended " + i);
         }
     };
 
@@ -188,6 +320,7 @@ public class MainActivity extends AppCompatActivity {
         super.onStart();
         googleApiClient.connect();
 
+        runTimerTask();
         debugLog("GoogleClient is Start");
     }
 
@@ -197,6 +330,7 @@ public class MainActivity extends AppCompatActivity {
         if (googleApiClient != null && googleApiClient.isConnected()) {
             googleApiClient.disconnect();
         }
+        timer.cancel();
 
         debugLog("GoogleClient is Stop");
     }
@@ -212,13 +346,11 @@ public class MainActivity extends AppCompatActivity {
 
     private void startSearchingClients() {
         if (!googleApiClient.isConnected()) {
-            Toast.makeText(getApplicationContext(),
-                    "Need run googleClient", Toast.LENGTH_SHORT).show();
+            debugLog("Need run googleClient");
             return;
         }
 
-        Toast.makeText(getApplicationContext(),
-                "start Advertising", Toast.LENGTH_SHORT).show();
+        debugLog("start Advertising");
 
         Nearby.Connections.startAdvertising(
                 googleApiClient,
@@ -228,13 +360,9 @@ public class MainActivity extends AppCompatActivity {
                 new AdvertisingOptions(STRATEGY))
                 .setResultCallback(result -> {
                     if (result.getStatus().isSuccess()) {
-                        Toast.makeText(getApplicationContext(),
-                                "startAdvertising:onResult: SUCCESS", Toast.LENGTH_SHORT).show();
                         debugLog("startAdvertising:onResult: SUCCESS");
                     } else {
-                        Toast.makeText(getApplicationContext(),
-                                "startAdvertising:onResult: FAILURE", Toast.LENGTH_SHORT).show();
-                        debugLog("startAdvertising:onResult: FAILURE");
+                        debugLog("startAdvertising:onResult: FAILURE " + result.getStatus());
                     }
                 });
     }
@@ -245,11 +373,12 @@ public class MainActivity extends AppCompatActivity {
      */
 
     private void stopSearchingClients() {
-        Toast.makeText(getApplicationContext(),
-                "stopSearchingClients", Toast.LENGTH_SHORT).show();
+        debugLog("stopSearchingClients");
 
         Nearby.Connections.stopAdvertising(googleApiClient);
+
         clientsAdapter.clearAll();
+        clients.clear();
     }
 
     /**
@@ -264,13 +393,11 @@ public class MainActivity extends AppCompatActivity {
 
     private void startDiscovery() {
         if (!googleApiClient.isConnected()) {
-            Toast.makeText(getApplicationContext(),
-                    "Need run googleClient", Toast.LENGTH_SHORT).show();
+            debugLog("Need run googleClient");
             return;
         }
 
-        Toast.makeText(getApplicationContext(),
-                "start discovering", Toast.LENGTH_SHORT).show();
+        debugLog("start discovering");
 
         Nearby.Connections.startDiscovery(
                 googleApiClient,
@@ -280,13 +407,9 @@ public class MainActivity extends AppCompatActivity {
                 .setResultCallback(
                         status -> {
                             if (status.isSuccess()) {
-                                Toast.makeText(getApplicationContext(),
-                                        "startDiscovery:onResult: SUCCESS", Toast.LENGTH_SHORT).show();
                                 debugLog("startDiscovery:onResult: SUCCESS");
                             } else {
-                                Toast.makeText(getApplicationContext(),
-                                        "startDiscovery:onResult: FAILURE", Toast.LENGTH_SHORT).show();
-                                debugLog("startDiscovery:onResult: FAILURE");
+                                debugLog("startDiscovery:onResult: FAILURE" + status.getStatus());
                             }
                         });
     }
@@ -294,8 +417,6 @@ public class MainActivity extends AppCompatActivity {
     private void stopDiscovery() {
         Nearby.Connections.stopDiscovery(googleApiClient);
 
-        Toast.makeText(getApplicationContext(),
-                "stopDiscovery: SUCCESS", Toast.LENGTH_SHORT).show();
         debugLog("stopDiscovery: SUCCESS");
     }
 
@@ -308,41 +429,49 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onEndpointFound(
                 String endpointId, DiscoveredEndpointInfo discoveredEndpointInfo) {
-            Toast.makeText(getApplicationContext(),
-                    "Found new endpoint :" + endpointId, Toast.LENGTH_SHORT).show();
             debugLog("Found new endpoint :" + endpointId);
 
             // TODO: 08.11.2017 add UUID other client
-            clients.add(DeviceInfo.otherDevice(
-                    discoveredEndpointInfo.getEndpointName(), endpointId, null));
+            DeviceInfo temp = DeviceInfo.otherDevice(
+                    discoveredEndpointInfo.getEndpointName(), endpointId, null);
 
-            clientsAdapter.setClient(
-                    DeviceInfo.otherDevice(discoveredEndpointInfo.getEndpointName(), endpointId, null));
+            if (!clients.contains(temp)) {
+                clients.add(DeviceInfo.otherDevice(
+                        discoveredEndpointInfo.getEndpointName(), endpointId, null));
 
-            //Auto Accept Connection
-            requestConnection(DeviceInfo.otherDevice(
-                    discoveredEndpointInfo.getEndpointName(), endpointId, null));
+                clientsAdapter.setClient(
+                        DeviceInfo.otherDevice(discoveredEndpointInfo.getEndpointName(), endpointId, null));
+
+                //Auto Accept Connection
+                //(Раскомментировать) Сам инициирует со всеми Коннект
+//            requestConnection(DeviceInfo.otherDevice(
+//                    discoveredEndpointInfo.getEndpointName(), endpointId, null));
+
+                foundNewDevice.foundNewDevice(endpointId, discoveredEndpointInfo);
+            }
         }
 
         @Override
         public void onEndpointLost(String endpointId) {
-            Toast.makeText(getApplicationContext(),
-                    "Lost endpoint: " + endpointId, Toast.LENGTH_SHORT).show();
             debugLog("Lost endpoint: " + endpointId);
-
+            footer.setText("PEEK");
 
             //удаляем отсоединившихся клиентов
             // TODO: 09.11.2017 Если удалять их, то как потом отправлять сообщения ?
-            clientsAdapter.removeClient(
-                    findRemoveClient(endpointId));
+            Nearby.Connections.disconnectFromEndpoint(googleApiClient, endpointId);
+
         }
     };
 
     private DeviceInfo findRemoveClient(String clientEndPoint) {
-        //used i, for return deleted DeviceInfo
-        for (int i = 0; i < clients.size(); i++) {
-            if (clients.get(i).getClientNearbyKey().equals(clientEndPoint)) {
-                return clients.remove(i);
+        for (Iterator<DeviceInfo> it = clients.iterator(); it.hasNext(); ) {
+            DeviceInfo temp = it.next();
+            if (temp.getClientNearbyKey().equals(clientEndPoint)) {
+//                DeviceInfo deviceInfo =
+//                        DeviceInfo.otherDevice(temp.getClientName(), temp.getClientNearbyKey(), temp.getUUID());
+                clients.remove(temp);
+
+                return temp;
             }
         }
         return DeviceInfo.empty();
@@ -357,10 +486,22 @@ public class MainActivity extends AppCompatActivity {
      */
 
     public interface ItemClick {
-        void onItemClick(DeviceInfo client);
+        void onItemClick(DeviceInfo client, boolean needRequestConnect);
     }
 
-    private ItemClick itemClickListener = client -> requestConnection(client);
+    private ItemClick itemClickListener = (client, needRequestConnect) -> {
+        // FIXME: 09.11.2017
+        targetId = client.getClientNearbyKey();
+        targetName = client.getClientName();
+
+        debugLog(String.format("Current target: %s, %s", targetId, targetName));
+        if (needRequestConnect) {
+            //For test
+            Nearby.Connections.disconnectFromEndpoint(googleApiClient, client.getClientNearbyKey());
+            //
+            requestConnection(client);
+        }
+    };
 
     /**
      * requestConnection
@@ -376,16 +517,17 @@ public class MainActivity extends AppCompatActivity {
                 .setResultCallback(
                         status -> {
                             if (status.isSuccess()) {
-                                Toast.makeText(getApplicationContext(),
-                                        "We successfully requested a connection", Toast.LENGTH_SHORT).show();
                                 debugLog("We successfully requested a connection");
 
-                                currentEndPoint = client.getClientNearbyKey();
-                                footer.setText(client.getClientNearbyKey());
+                                targetId = client.getClientNearbyKey();
+                                targetName = client.getClientName();
+
+                                footer.setText(targetName);
                             } else {
-                                Toast.makeText(getApplicationContext(),
-                                        "Nearby Connections failed", Toast.LENGTH_SHORT).show();
-                                debugLog("Nearby Connections failed");
+                                debugLog("Nearby Connections failed" + status.getStatus());
+
+                                Nearby.Connections.disconnectFromEndpoint(googleApiClient, client.getClientNearbyKey());
+//                                clientsAdapter.removeClient(client);
                             }
                         }
                 );
@@ -400,60 +542,30 @@ public class MainActivity extends AppCompatActivity {
      * Отправка сообщения
      */
 
-    private void sendTargetMessage(String targetEndPoint, String message) {
-        Toast.makeText(getApplicationContext(),
-                "Send message to" + currentEndPoint, Toast.LENGTH_SHORT).show();
-        debugLog("Send message to" + currentEndPoint);
-
-        Nearby.Connections.sendPayload(
-                googleApiClient,
-                targetEndPoint,
-                Payload.fromBytes(message.getBytes())
-        ).setResultCallback(status -> {
-            if (status.isSuccess()) {
-                Toast.makeText(getApplicationContext(),
-                        "Send OK!!", Toast.LENGTH_SHORT).show();
-
-                messagesAdapter.setMessages("ME: " + textMessage.getText().toString());
-                textMessage.setText("");
-
-                scrollToBottom();
-            } else {
-                Toast.makeText(getApplicationContext(),
-                        "Send FAIL!!", Toast.LENGTH_SHORT).show();
-            }
-        });
-    }
-
-    private void sendBroadcastMessage(String message) {
-        Toast.makeText(getApplicationContext(),
-                "Send broadcast", Toast.LENGTH_SHORT).show();
+    private void sendBroadcastMessage(Message message, boolean isLost) throws IOException {
         debugLog("Send broadcast");
 
         Nearby.Connections.sendPayload(
                 googleApiClient,
                 createClientsEndPoints(clients),
-                Payload.fromBytes(message.getBytes())
-//                Payload.fromBytes(Parcels.wrap(
-//                        Message.newMessage(
-//                                myDevice.getClientName(),
-//                                myDevice.getClientNearbyKey(),
-//                                myDevice.getUUID())).toString().getBytes())
+                Payload.fromBytes(
+                        MessageConverter.toBytes(message))
         ).setResultCallback(status -> {
             if (status.isSuccess()) {
-                Toast.makeText(getApplicationContext(),
-                        "Send OK!!", Toast.LENGTH_SHORT).show();
+                debugLog("Send OK!!");
 
-                messagesAdapter.setMessages("ME: " + textMessage.getText().toString());
-                textMessage.setText("");
+                if (!isLost) {
+                    messagesAdapter.setMessages("ME: " + message.getText());
+                    textMessage.setText("");
 
-                scrollToBottom();
+                    scrollToBottom();
+                }
             } else {
-                Toast.makeText(getApplicationContext(),
-                        "Send FAIL!!", Toast.LENGTH_SHORT).show();
+                debugLog("Send FAIL!!" + status.getStatus());
             }
         });
     }
+
 
     /**
      * ==========
@@ -471,9 +583,36 @@ public class MainActivity extends AppCompatActivity {
     private PayloadCallback payloadCallback = new PayloadCallback() {
         @Override
         public void onPayloadReceived(String endPointId, Payload payload) {
-            messagesAdapter.setMessages(String.format("%s : %s", endPointId, new String(payload.asBytes())));
+            Message receivedMessage = null;
+            try {
+                receivedMessage = MessageConverter.getMessage(payload.asBytes());
+            } catch (IOException | ClassNotFoundException e) {
+                // TODO: 09.11.2017 ErrorCast Message
+                e.printStackTrace();
+            }
 
-            scrollToBottom();
+            String from = receivedMessage.getFrom();
+            String targetId = receivedMessage.getTargetId();
+            String targetName = receivedMessage.getTargetName();
+            String textMessage = receivedMessage.getText();
+
+            //Иначе это Broadcast
+            if (targetId != null && targetName != null) {
+                // FIXME: 09.11.2017 Должно быть что-то одно ()
+                if (targetId.equals(myDevice.getClientNearbyKey()) || targetName.equals(myDevice.getClientName())) {
+                    //Если сообщение нам
+                    showReceivedMessage(from, textMessage);
+                } else {
+                    //Если сообщение не нам
+                    // TODO: 09.11.2017 Логика передачи сообщения дальше по цепочке
+                    // FIXME: 09.11.2017 Не добавлять одинаковые сообщения (Добавить UUID собщения)
+                    if (!lostMessages.contains(receivedMessage)) {
+                        lostMessages.add(receivedMessage);
+                    }
+                }
+            } else {
+                showReceivedMessage("", textMessage);
+            }
         }
 
         @Override
@@ -483,6 +622,20 @@ public class MainActivity extends AppCompatActivity {
     };
 
 
+    private void searchTargetInNetwork(Message receivedMessage) {
+//        lostMessages.add(receivedMessage);
+
+        //Обновляем список клиентов
+//        clients.clear();
+//        startDiscovery();
+
+    }
+
+    private void showReceivedMessage(String from, String text) {
+        messagesAdapter.setMessages(String.format("%s : %s", from, text));
+        scrollToBottom();
+    }
+
     /**
      * ConnectionLifecycleCallback
      * Оповещения о состоянии подключения
@@ -491,21 +644,21 @@ public class MainActivity extends AppCompatActivity {
     private ConnectionLifecycleCallback connectionLifecycleCallback = new ConnectionLifecycleCallback() {
         @Override
         public void onConnectionInitiated(String endPoint, ConnectionInfo connectionInfo) {
-            Toast.makeText(getApplicationContext(),
-                    "onConnectionInitiated", Toast.LENGTH_SHORT).show();
+            debugLog("onConnectionInitiated");
 
             // Automatically accept the connection on both sides.
             Nearby.Connections.acceptConnection(
                     googleApiClient, endPoint, payloadCallback)
                     .setResultCallback(status -> {
                         if (!status.isSuccess()) {
-                            Toast.makeText(getApplicationContext(),
-                                    "onConnectionInitiated: OK!!!", Toast.LENGTH_SHORT).show();
+                            debugLog("onConnectionInitiated: OK!!!");
                         }
                     });
 
-            currentEndPoint = endPoint;
-            footer.setText(currentEndPoint);
+            targetId = endPoint;
+            targetName = connectionInfo.getEndpointName();
+
+            footer.setText(targetName);
 
             DeviceInfo temp = checkNewClient(endPoint, connectionInfo);
 
@@ -516,28 +669,27 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onConnectionResult(String s, ConnectionResolution result) {
-            Toast.makeText(getApplicationContext(),
-                    "onConnectionResult", Toast.LENGTH_SHORT).show();
+            debugLog("onConnectionResult");
 
             switch (result.getStatus().getStatusCode()) {
                 case ConnectionsStatusCodes.STATUS_OK:
-                    Toast.makeText(getApplicationContext(),
-                            "Connect: OK", Toast.LENGTH_SHORT).show();
+                    debugLog("Connect: OK");
                     break;
                 case ConnectionsStatusCodes.STATUS_CONNECTION_REJECTED:
-                    Toast.makeText(getApplicationContext(),
-                            "Connect: FAIL", Toast.LENGTH_SHORT).show();
+                    debugLog("Connect: FAIL" + result.getStatus());
                     break;
             }
         }
 
         @Override
         public void onDisconnected(String s) {
-            Toast.makeText(getApplicationContext(),
-                    "onDisconnected", Toast.LENGTH_SHORT).show();
+            debugLog("onDisconnected");
 
-            currentEndPoint = null;
+            targetId = "";
+            targetName = "";
             footer.setText("PEEK"); // FIXME: 07.11.2017 Set Default Text
+
+            Nearby.Connections.disconnectFromEndpoint(googleApiClient, s);
         }
     };
 
@@ -573,6 +725,8 @@ public class MainActivity extends AppCompatActivity {
 
     private void debugLog(String textLog) {
         Log.d(TAG, textLog);
+        Toast.makeText(getApplicationContext(),
+                textLog, Toast.LENGTH_SHORT).show();
     }
 
 
@@ -592,7 +746,6 @@ public class MainActivity extends AppCompatActivity {
         LinearLayoutManager linearLayoutManager =
                 new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false);
         linearLayoutManager.setStackFromEnd(true);
-//        linearLayoutManager.setReverseLayout(true);
 
         messagesRecyclerView.setLayoutManager(linearLayoutManager);
 

@@ -4,6 +4,7 @@ import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -56,7 +57,8 @@ public class ClientsAdapter extends RecyclerView.Adapter<ClientsAdapter.ViewHold
         holder.clientName.setText(clients.get(position).getClientName());
         holder.clientMac.setText(clients.get(position).getClientNearbyKey());
 
-        holder.container.setOnClickListener(view -> listener.onItemClick(clients.get(position)));
+        holder.container.setOnClickListener(view -> listener.onItemClick(clients.get(position), true));
+        holder.currentSend.setOnClickListener(view -> listener.onItemClick(clients.get(position), false));
     }
 
     @Override
@@ -68,6 +70,7 @@ public class ClientsAdapter extends RecyclerView.Adapter<ClientsAdapter.ViewHold
         private LinearLayout container;
         private TextView clientName;
         private TextView clientMac;
+        private Button currentSend;
         private ProgressBar waitConnected;
 
 
@@ -77,6 +80,7 @@ public class ClientsAdapter extends RecyclerView.Adapter<ClientsAdapter.ViewHold
             container = itemView.findViewById(R.id.client_container);
             clientName = itemView.findViewById(R.id.txt_client_name);
             clientMac = itemView.findViewById(R.id.txt_client_mac);
+            currentSend = itemView.findViewById(R.id.btn_send_current);
             waitConnected = itemView.findViewById(R.id.pb_wait_connect);
         }
     }

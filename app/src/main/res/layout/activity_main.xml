@@ -41,7 +41,7 @@
                     android:id="@+id/btn_broadcast"
                     android:layout_width="100dp"
                     android:layout_height="match_parent"
-                    android:text="Broad"/>
+                    android:text="Drop"/>
             </Toolbar>
 
             <android.support.v7.widget.RecyclerView

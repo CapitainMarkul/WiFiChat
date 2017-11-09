@@ -15,6 +15,7 @@ public class DeviceInfo {
     private String UUID;
     private final String clientName;
     private final String clientNearbyKey;
+    private boolean isConnected;
 
     public static DeviceInfo myDevice(@NonNull String name, @NonNull String UUID) {
         return new DeviceInfo(name, null, UUID);
@@ -50,6 +51,14 @@ public class DeviceInfo {
         this.UUID = UUID;
     }
 
+    public boolean isConnected() {
+        return isConnected;
+    }
+
+    public void setConnected(boolean connected) {
+        isConnected = connected;
+    }
+
     public State getState() {
         return clientName == null && UUID == null ?
                 State.EMPTY :
@@ -81,6 +90,7 @@ public class DeviceInfo {
         result = 31 * result + (getClientNearbyKey() != null ? getClientNearbyKey().hashCode() : 0);
         result = 31 * result + (getUUID() != null ? getUUID().hashCode() : 0);
         result = 31 * result + (getState() != null ? getState().hashCode() : 0);
+
         return result;
     }
 }

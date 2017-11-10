@@ -40,6 +40,11 @@ public abstract class Message implements Serializable, Comparator<Message> {
         return new AutoValue_Message(null, targetId, null, null, UUID.randomUUID().toString(), LocalDateTime.now(), message);
     }
 
+    // TODO: 10.11.2017 Доделай, чтобы МЕНЯ больше не искали
+    public static Message stopSearchMe(String targetId, Message message) {
+        return new AutoValue_Message(null, targetId, null, null, UUID.randomUUID().toString(), LocalDateTime.now(), message);
+    }
+
     public State getState(){
         return getDeliveredMessage() != null ?
                 State.DELIVERED_MESSAGE : State.NEW_MESSAGE;

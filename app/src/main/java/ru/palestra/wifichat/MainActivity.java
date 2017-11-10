@@ -84,26 +84,31 @@ public class MainActivity extends AppCompatActivity {
 
     private SharedPrefServiceImpl sharedPrefService = new SharedPrefServiceImpl(this);
 
-//    public interface FoundNewDevice {
-//        void foundNewDevice(String endpointId, DiscoveredEndpointInfo discoveredEndpointInfo);
-//    }
-//
-//    private FoundNewDevice foundNewDevice = (endpointId, discoveredEndpointInfo) -> {
-//        // TODO: 09.11.2017  После нахождения нового устройства проверяем, ему ли предназначалось сообщение
-////
-////        debugLog(String.format("___Count Lost Message %s", lostMessages.size()));
-////
-////        try {
-//////            sendLostMessage();
-////        } catch (IOException e) {
-////            e.printStackTrace();
-////        }
-//    };
+    public interface FoundNewDevice {
+        void foundNewDevice(String endpointId, DiscoveredEndpointInfo discoveredEndpointInfo);
+    }
+
+    private FoundNewDevice foundNewDevice = (endpointId, discoveredEndpointInfo) -> {
+        // После нахождения нового устройства проверяем, ему ли предназначалось сообщение
+        try {
+            for (Message message : lostMessages) {
+                //Мы только что нашли того, кого искали. Немедленно коннектимся к нему
+                if (message.getTargetId().equals(endpointId) ||
+                        message.getTargetName().equals(discoveredEndpointInfo.getEndpointName())) {
+                    requestConnection(
+                            DeviceInfo.otherDevice(discoveredEndpointInfo.getEndpointName(), endpointId, null), message);
+                }
+            }
+            sendLostMessage();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    };
 
     private void sendLostMessage() throws IOException {
         debugLog(String.format("Timer! Lost: %s, Deliver: %s", lostMessages.size(), deliveredLostMessages.size()));
 
-        //Защита, если мы есще не успели всем передать сообщение, а уже сработало событие
+        //Защита, если мы еще не успели всем передать сообщение, а уже сработало событие
         if (sendingLostMessageComplete) {   //Lock.class ??
             sendingLostMessageComplete = false;
             broadCastBanList.clear();
@@ -127,23 +132,10 @@ public class MainActivity extends AppCompatActivity {
 
                                 //Доставили получателю
                                 deliverTargetMessage(message);
-
-//                                deliveredLostMessages.add(message);
-//                                lostMessages.remove(message);
-
-                                debugLog("Send Lost Message on target");
                                 break;
                             }
                         }
                     }
-
-//                    //Получатель не найден
-//                    if (lostMessages.contains(message)) {
-//                        sendBroadcastMessage(message);
-//
-//                        broadCastBanList.put(message, clients); //Сохраняем всех подключенных клиентов, кому пытались отправить сообщение
-//                        debugLog("Send Lost Message on all");
-//                    }
                 }
             }
 
@@ -449,7 +441,7 @@ public class MainActivity extends AppCompatActivity {
 //            requestConnection(DeviceInfo.otherDevice(
 //                    discoveredEndpointInfo.getEndpointName(), endpointId, null));
 
-//                foundNewDevice.foundNewDevice(endpointId, discoveredEndpointInfo);
+                foundNewDevice.foundNewDevice(endpointId, discoveredEndpointInfo);
             }
         }
 
@@ -490,7 +482,7 @@ public class MainActivity extends AppCompatActivity {
             stopDiscovery();
             searchClients.setText("Start Discovering");
 
-            requestConnection(client);
+            requestConnection(client, null);
 //            startDiscovery();
         }
     };
@@ -500,7 +492,7 @@ public class MainActivity extends AppCompatActivity {
      * Запрос на соединение с клиентом
      */
 
-    private void requestConnection(DeviceInfo client) {
+    private void requestConnection(DeviceInfo client, Message message) {
         Nearby.Connections.requestConnection(
                 googleApiClient,
                 myDevice.getClientName(),
@@ -515,6 +507,14 @@ public class MainActivity extends AppCompatActivity {
                                 targetName = client.getClientName();
 
                                 footer.setText(targetName);
+
+                                if (message != null) {
+                                    try {
+                                        deliverTargetMessage(message);
+                                    } catch (IOException e) {
+                                        e.printStackTrace();
+                                    }
+                                }
                             } else {
                                 debugLog("Nearby Connections failed" + status.getStatus());
 

@@ -1,50 +1,52 @@
 package ru.palestra.wifichat.model;
 
-import org.parceler.Parcel;
-import org.parceler.ParcelConstructor;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
+
+import com.google.auto.value.AutoValue;
+
+import org.threeten.bp.Instant;
+import org.threeten.bp.LocalDateTime;
 
 import java.io.Serializable;
+import java.util.Comparator;
+import java.util.UUID;
+
 
 /**
  * Created by Dmitry on 08.11.2017.
  */
 
-@Parcel
-public class Message implements Serializable {
-    private final String from;
-    private final String targetId;
-    private final String targetName;
-    private final String text;
+@AutoValue
+public abstract class Message implements Serializable, Comparator<Message> {
+    public enum State{
+        DELIVERED_MESSAGE, NEW_MESSAGE
+    }
+
+    @Nullable public abstract String getFrom();
+    public abstract String getTargetId();
+    @Nullable public abstract String getTargetName();
+    @Nullable public abstract String getText();
+    public abstract String getUUID();
+    public abstract LocalDateTime getTimeSend();
+    @Nullable public abstract Message getDeliveredMessage();
 
     public static Message newMessage(String from, String targetId, String targetName, String text) {
-        return new Message(from, targetId, targetName, text);
+        return new AutoValue_Message(from, targetId, targetName, text, UUID.randomUUID().toString(), LocalDateTime.now(),null);
     }
 
-//    public static Message uuidMessage(String from, String targetId, String text) {
-//        return new Message(from, targetId, text);
-//    }
 
-    @ParcelConstructor
-    private Message(String from, String targetId, String targetName, String text) {
-        this.from = from;
-        this.targetId = targetId;
-        this.targetName = targetName;
-        this.text = text;
+    public static Message deliveredMessage(String targetId, Message message) {
+        return new AutoValue_Message(null, targetId, null, null, UUID.randomUUID().toString(), LocalDateTime.now(), message);
     }
 
-    public String getFrom() {
-        return from;
+    public State getState(){
+        return getDeliveredMessage() != null ?
+                State.DELIVERED_MESSAGE : State.NEW_MESSAGE;
     }
 
-    public String getTargetId() {
-        return targetId;
-    }
-
-    public String getTargetName() {
-        return targetName;
-    }
-
-    public String getText() {
-        return text;
+    @Override
+    public int compare(Message message, Message t1) {
+        return 0;
     }
 }

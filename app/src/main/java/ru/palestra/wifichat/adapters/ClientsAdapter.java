@@ -27,13 +27,34 @@ public class ClientsAdapter extends RecyclerView.Adapter<ClientsAdapter.ViewHold
     private MainActivity.ItemClick listener;
 
     public void setClient(DeviceInfo client) {
+        DeviceInfo[] devicesInfo = new DeviceInfo[clients.size()];
+        devicesInfo = clients.toArray(devicesInfo);
+
+        //Удаляем дубликаты клиентов с неверными точками доступа
+        for (int i = 0; i < devicesInfo.length; i++) {
+            if (devicesInfo[i].getClientName().equals(client.getClientName())) {
+                clients.remove(devicesInfo[i]);
+                notifyItemRemoved(i);
+            }
+        }
+
         clients.add(client);
         notifyDataSetChanged();
     }
 
-    public void removeClient(DeviceInfo client) {
-        clients.remove(client);
-        notifyDataSetChanged();
+    public void removeClient(DeviceInfo device) {
+        DeviceInfo[] devicesInfo = new DeviceInfo[clients.size()];
+        devicesInfo = clients.toArray(devicesInfo);
+
+        if (device.getState() != DeviceInfo.State.EMPTY) {
+            //Удаляем дубликаты клиентов с неверными точками доступа
+            for (int i = 0; i < devicesInfo.length; i++) {
+                if (devicesInfo[i].getClientNearbyKey().equals(device.getClientNearbyKey())) {
+                    clients.remove(devicesInfo[i]);
+                    notifyItemRemoved(i);
+                }
+            }
+        }
     }
 
     public void clearAll() {

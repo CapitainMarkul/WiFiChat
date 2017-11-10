@@ -7,23 +7,55 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import ru.palestra.wifichat.R;
+import ru.palestra.wifichat.model.DeviceInfo;
+import ru.palestra.wifichat.model.Message;
 
 /**
  * Created by Dmitry on 01.11.2017.
  */
 
 public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.ViewHolder> {
+    private List<Message> messages = new ArrayList<>();
+    private DeviceInfo device;
 
-    private List<String> messages = new ArrayList<>();
+    public void setCurrentDevice(DeviceInfo device) {
+        this.device = device;
+    }
 
-    public void setMessages(String textMessage) {
-        if(!messages.contains(textMessage)) {
-            messages.add(textMessage);
+    public void setMessages(Message message) {
+        if (!messages.contains(message)) {
+            messages.add(message);
+            sortMessages();
+
             notifyDataSetChanged();
         }
+    }
+
+    private void sortMessages() {
+        Collections.sort(messages, (message1, message2) -> {
+            int hourMessage1 = message1.getTimeSend().getHour();
+            int hourMessage2 = message2.getTimeSend().getHour();
+            int minuteMessage1 = message1.getTimeSend().getMinute();
+            int minuteMessage2 = message2.getTimeSend().getMinute();
+
+            if (hourMessage1 > hourMessage2) {
+                return 1;
+            } else if (hourMessage1 < hourMessage2) {
+                return -1;
+            } else {
+                if (minuteMessage1 > minuteMessage2) {
+                    return 1;
+                } else if (minuteMessage1 < minuteMessage2) {
+                    return -1;
+                } else {
+                    return 0;
+                }
+            }
+        });
     }
 
     @Override
@@ -35,7 +67,18 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.ViewHo
 
     @Override
     public void onBindViewHolder(MessagesAdapter.ViewHolder holder, int position) {
-        holder.message.setText(messages.get(position));
+        Message currentMessage = messages.get(position);
+        if (device != null) {
+            if (currentMessage.getFrom().equals(device.getClientName())) {
+                holder.message.setText(
+                        String.format("ME: %s", currentMessage.getText()));
+            } else {
+                holder.message.setText(
+                        String.format("%s: %s", currentMessage.getFrom(), currentMessage.getText()));
+            }
+            holder.timeSend.setText(
+                    String.format("%s:%s", currentMessage.getTimeSend().getHour(), currentMessage.getTimeSend().getMinute()));
+        }
     }
 
     @Override
@@ -45,11 +88,13 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.ViewHo
 
     static class ViewHolder extends RecyclerView.ViewHolder {
         private TextView message;
+        private TextView timeSend;
 
         public ViewHolder(View itemView) {
             super(itemView);
 
-            message = itemView.findViewById(R.id.item_message);
+            message = itemView.findViewById(R.id.txt_item_message);
+            timeSend = itemView.findViewById(R.id.txt_time_send);
         }
     }
 }

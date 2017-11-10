@@ -3,7 +3,6 @@ package ru.palestra.wifichat;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.os.Handler;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -51,14 +50,13 @@ import ru.palestra.wifichat.services.SharedPrefServiceImpl;
 
 public class MainActivity extends AppCompatActivity {
     private final static String TAG = MainActivity.class.getSimpleName();
+    private RecyclerView clientsRecyclerView;
+    private RecyclerView messagesRecyclerView;
+
+    private ClientsAdapter clientsAdapter;
+    private MessagesAdapter messagesAdapter;
 
     private DeviceInfo myDevice;
-
-    private RecyclerView clientsRecyclerView;
-    private ClientsAdapter clientsAdapter;
-
-    private RecyclerView messagesRecyclerView;
-    private MessagesAdapter messagesAdapter;
 
     private TextView footer;
     private Button sendMessage;
@@ -66,14 +64,14 @@ public class MainActivity extends AppCompatActivity {
     private Button sendBroadcast;
     private EditText textMessage;
 
-    private boolean isDiscovering = false;
-
     private String targetId = "";
     private String targetName = "";
 
     private GoogleApiClient googleApiClient;
-    // client's name that's visible to other devices when connecting
+
     private List<Message> lostMessages = new ArrayList<>(); //Недоставленные сообщения
+    private List<Message> deliveredLostMessages = new ArrayList<>(); //Доставленные "Недоставленные" сообщения
+
     private Set<DeviceInfo> clients = new HashSet<>();
 
     public static final String SERVICE_ID = "palestra.wifichat";
@@ -81,28 +79,29 @@ public class MainActivity extends AppCompatActivity {
 
     private Timer timer;
 
-    private Map<Message, List<DeviceInfo>> broadCastBanList = new HashMap<>();
+    private Map<Message, Set<DeviceInfo>> broadCastBanList = new HashMap<>();
     private boolean sendingLostMessageComplete = true;
 
     private SharedPrefServiceImpl sharedPrefService = new SharedPrefServiceImpl(this);
 
-    public interface FoundNewDevice {
-        void foundNewDevice(String endpointId, DiscoveredEndpointInfo discoveredEndpointInfo);
-    }
-
-    private FoundNewDevice foundNewDevice = (endpointId, discoveredEndpointInfo) -> {
-        // TODO: 09.11.2017  После нахождения нового устройства проверяем, ему ли предназначалось сообщение
+//    public interface FoundNewDevice {
+//        void foundNewDevice(String endpointId, DiscoveredEndpointInfo discoveredEndpointInfo);
+//    }
 //
-//        debugLog(String.format("___Count Lost Message %s", lostMessages.size()));
-//
-//        try {
-////            sendLostMessage();
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-    };
+//    private FoundNewDevice foundNewDevice = (endpointId, discoveredEndpointInfo) -> {
+//        // TODO: 09.11.2017  После нахождения нового устройства проверяем, ему ли предназначалось сообщение
+////
+////        debugLog(String.format("___Count Lost Message %s", lostMessages.size()));
+////
+////        try {
+//////            sendLostMessage();
+////        } catch (IOException e) {
+////            e.printStackTrace();
+////        }
+//    };
 
     private void sendLostMessage() throws IOException {
+        debugLog(String.format("Timer! Lost: %s, Deliver: %s", lostMessages.size(), deliveredLostMessages.size()));
 
         //Защита, если мы есще не успели всем передать сообщение, а уже сработало событие
         if (sendingLostMessageComplete) {   //Lock.class ??
@@ -113,34 +112,38 @@ public class MainActivity extends AppCompatActivity {
 //                Intent intent = new Intent(getApplicationContext(), SendLostMessage.class);
 //                intent.putExtra("lostMessages", Parcels.wrap(lostMessages));
 //                startService(intent);
-                boolean isFoundTarget = false;
 
                 Message[] messages = new Message[lostMessages.size()];
                 messages = lostMessages.toArray(messages);
 
                 for (Message message : messages) {
-                    List<DeviceInfo> banList = new ArrayList<>();
-
                     for (DeviceInfo client : clients) {
-                        if (message.getTargetId().equals(client.getClientNearbyKey()) ||
-                                message.getTargetName().equals(client.getClientName())) {
+                        //Проверяем, пытались ли мы уже отправлять сообщение данному клиенту
+                        if (broadCastBanList.get(message) == null ||
+                                !broadCastBanList.get(message).contains(client)) {
+                            //Проверяем, это тот клиент который нам нужен
+                            if (message.getTargetId().equals(client.getClientNearbyKey()) ||
+                                    message.getTargetName().equals(client.getClientName())) {
 
-                            //Доставили получателю
-                            sendBroadcastMessage(message, true);
-                            lostMessages.remove(message);
-                            isFoundTarget = true;
-                            debugLog("Send Lost Message on target");
+                                //Доставили получателю
+                                deliverTargetMessage(message);
+
+//                                deliveredLostMessages.add(message);
+//                                lostMessages.remove(message);
+
+                                debugLog("Send Lost Message on target");
+                                break;
+                            }
                         }
-                        banList.add(client);
                     }
-                    broadCastBanList.put(message, banList);
 
-
-                    if (!isFoundTarget) {
-                        //Получатель не найден
-                        sendBroadcastMessage(message, true);
-                        debugLog("Send Lost Message on all");
-                    }
+//                    //Получатель не найден
+//                    if (lostMessages.contains(message)) {
+//                        sendBroadcastMessage(message);
+//
+//                        broadCastBanList.put(message, clients); //Сохраняем всех подключенных клиентов, кому пытались отправить сообщение
+//                        debugLog("Send Lost Message on all");
+//                    }
                 }
             }
 
@@ -153,10 +156,11 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        myDevice = sharedPrefService.getInfoAboutMyDevice();
+
         setupClientsRecyclerView();
         setupMessagesRecyclerView();
 
-        myDevice = sharedPrefService.getInfoAboutMyDevice();
         setTitle(myDevice.getClientName());
 
         footer = findViewById(R.id.txt_peek);
@@ -170,9 +174,7 @@ public class MainActivity extends AppCompatActivity {
         sendBroadcast.setOnClickListener(view -> {
             targetId = "";
             targetName = "";
-
-            debugLog("Broadcast: On");
-
+            footer.setText("PEEK");
 //            Nearby.Connections.stopAdvertising(googleApiClient);
 //            Nearby.Connections.stopDiscovery(googleApiClient);
             Nearby.Connections.stopAllEndpoints(googleApiClient);
@@ -189,24 +191,23 @@ public class MainActivity extends AppCompatActivity {
                     targetName != null && !targetName.isEmpty()) {
                 try {
                     sendBroadcastMessage(
-                            Message.newMessage(myDevice.getClientName(), targetId, targetName, textMessage.getText().toString()),
-                            false);
+                            Message.newMessage(myDevice.getClientName(), targetId, targetName, textMessage.getText().toString()));
                 } catch (IOException e) {
-                    // TODO: 09.11.2017 Error Serialize
                     e.printStackTrace();
                 }
             } else {
-                if (!clients.isEmpty()) {
-                    try {
-                        sendBroadcastMessage(
-                                Message.newMessage(myDevice.getClientName(), null, null, textMessage.getText().toString()),
-                                false);
-                    } catch (IOException e) {
-                        // TODO: 09.11.2017 Error Serialize
-                        e.printStackTrace();
-                    }
-                }
+                debugLog("А кому доставлять-то ?");
             }
+//            else {
+//                if (!clients.isEmpty()) {
+//                    try {
+//                        sendBroadcastMessage(
+//                                Message.newMessage(myDevice.getClientName(), null, null, textMessage.getText().toString()));
+//                    } catch (IOException e) {
+//                        e.printStackTrace();
+//                    }
+//                }
+//            }
         });
 
 
@@ -226,13 +227,9 @@ public class MainActivity extends AppCompatActivity {
             if (searchClients.getText().toString().contains("Star")) {
                 searchClients.setText("Stop discovering");
                 startDiscovery();
-
-                isDiscovering = true;
             } else {
                 searchClients.setText("Start discovering");
                 stopDiscovery();
-
-                isDiscovering = false;
             }
         });
 
@@ -241,10 +238,13 @@ public class MainActivity extends AppCompatActivity {
         createGoogleApiClient();
     }
 
-    private List<String> createClientsEndPoints(Set<DeviceInfo> clients) {
+    private List<String> createClientsEndPoints(Set<DeviceInfo> clients, String fromName) {
         List<String> allEndPoints = new ArrayList<>();
         for (DeviceInfo endPoint : clients) {
-            allEndPoints.add(endPoint.getClientNearbyKey());
+            //Сообщение не нужно передавать назад отправителю
+            if (!endPoint.getClientName().equals(fromName)) {
+                allEndPoints.add(endPoint.getClientNearbyKey());
+            }
         }
         return allEndPoints;
     }
@@ -259,16 +259,11 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void run() {
             runOnUiThread(() -> {
-//                if (!isDiscovering) {
-
                 try {
-                    debugLog("Timer SendLostMessage");
-
                     sendLostMessage();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-//                }
             });
         }
     }
@@ -429,25 +424,32 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onEndpointFound(
                 String endpointId, DiscoveredEndpointInfo discoveredEndpointInfo) {
-            debugLog("Found new endpoint :" + endpointId);
+            debugLog("Found new endpoint: " + endpointId);
 
-            // TODO: 08.11.2017 add UUID other client
             DeviceInfo temp = DeviceInfo.otherDevice(
                     discoveredEndpointInfo.getEndpointName(), endpointId, null);
 
-            if (!clients.contains(temp)) {
-                clients.add(DeviceInfo.otherDevice(
-                        discoveredEndpointInfo.getEndpointName(), endpointId, null));
+            boolean isNewDevice = true;
+            for (DeviceInfo device : clients) {
+                if (device.getClientName().equals(discoveredEndpointInfo.getEndpointName())) {
+                    isNewDevice = false;
 
-                clientsAdapter.setClient(
-                        DeviceInfo.otherDevice(discoveredEndpointInfo.getEndpointName(), endpointId, null));
+                    //что-то произошло с прошлым устройством
+                    removeDisconnectedClient(endpointId);
+                    break;
+                }
+            }
+
+            if (isNewDevice) {
+                clients.add(temp);
+                clientsAdapter.setClient(temp);
 
                 //Auto Accept Connection
                 //(Раскомментировать) Сам инициирует со всеми Коннект
 //            requestConnection(DeviceInfo.otherDevice(
 //                    discoveredEndpointInfo.getEndpointName(), endpointId, null));
 
-                foundNewDevice.foundNewDevice(endpointId, discoveredEndpointInfo);
+//                foundNewDevice.foundNewDevice(endpointId, discoveredEndpointInfo);
             }
         }
 
@@ -462,20 +464,6 @@ public class MainActivity extends AppCompatActivity {
 
         }
     };
-
-    private DeviceInfo findRemoveClient(String clientEndPoint) {
-        for (Iterator<DeviceInfo> it = clients.iterator(); it.hasNext(); ) {
-            DeviceInfo temp = it.next();
-            if (temp.getClientNearbyKey().equals(clientEndPoint)) {
-//                DeviceInfo deviceInfo =
-//                        DeviceInfo.otherDevice(temp.getClientName(), temp.getClientNearbyKey(), temp.getUUID());
-                clients.remove(temp);
-
-                return temp;
-            }
-        }
-        return DeviceInfo.empty();
-    }
 
     /**
      * ==========
@@ -497,9 +485,13 @@ public class MainActivity extends AppCompatActivity {
         debugLog(String.format("Current target: %s, %s", targetId, targetName));
         if (needRequestConnect) {
             //For test
-            Nearby.Connections.disconnectFromEndpoint(googleApiClient, client.getClientNearbyKey());
+//            Nearby.Connections.disconnectFromEndpoint(googleApiClient, client.getClientNearbyKey());
             //
+            stopDiscovery();
+            searchClients.setText("Start Discovering");
+
             requestConnection(client);
+//            startDiscovery();
         }
     };
 
@@ -538,25 +530,54 @@ public class MainActivity extends AppCompatActivity {
      * ==========
      * 5 ЭТАП
      * ==========
-     * sendTargetMessage || sendBroadcastMessage
+     * deliverTargetMessage || sendBroadcastMessage
      * Отправка сообщения
      */
 
-    private void sendBroadcastMessage(Message message, boolean isLost) throws IOException {
-        debugLog("Send broadcast");
+    private void deliverTargetMessage(Message message) throws IOException {
+        debugLog("Send target: " + message.getTargetId());
 
         Nearby.Connections.sendPayload(
                 googleApiClient,
-                createClientsEndPoints(clients),
+                message.getTargetId(),
                 Payload.fromBytes(
                         MessageConverter.toBytes(message))
         ).setResultCallback(status -> {
             if (status.isSuccess()) {
                 debugLog("Send OK!!");
 
-                if (!isLost) {
-                    messagesAdapter.setMessages("ME: " + message.getText());
-                    textMessage.setText("");
+                deliveredLostMessages.add(message);
+                lostMessages.remove(message);
+            } else {
+                debugLog("Send FAIL!!" + status.getStatus());
+
+                //Получатель не найден или не удалось доставить
+                try {
+                    sendBroadcastMessage(message);
+
+                    broadCastBanList.put(message, clients); //Сохраняем всех подключенных клиентов, кому пытались отправить сообщение
+                    debugLog("Send Lost Message on all");
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+    }
+
+    private void sendBroadcastMessage(Message message) throws IOException {
+        debugLog("Send broadcast");
+
+        Nearby.Connections.sendPayload(
+                googleApiClient,
+                createClientsEndPoints(clients, message.getFrom()),
+                Payload.fromBytes(
+                        MessageConverter.toBytes(message))
+        ).setResultCallback(status -> {
+            if (status.isSuccess()) {
+                debugLog("Send OK!!");
+
+                if (message.getFrom().equals(myDevice.getClientName())) {
+                    showMyMessage(message);
 
                     scrollToBottom();
                 }
@@ -566,6 +587,10 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private void showMyMessage(Message message) {
+        messagesAdapter.setMessages(message);
+        textMessage.setText("");
+    }
 
     /**
      * ==========
@@ -583,35 +608,53 @@ public class MainActivity extends AppCompatActivity {
     private PayloadCallback payloadCallback = new PayloadCallback() {
         @Override
         public void onPayloadReceived(String endPointId, Payload payload) {
-            Message receivedMessage = null;
+            Message receivedMessage;
             try {
                 receivedMessage = MessageConverter.getMessage(payload.asBytes());
             } catch (IOException | ClassNotFoundException e) {
-                // TODO: 09.11.2017 ErrorCast Message
                 e.printStackTrace();
+                return;
             }
 
-            String from = receivedMessage.getFrom();
-            String targetId = receivedMessage.getTargetId();
-            String targetName = receivedMessage.getTargetName();
-            String textMessage = receivedMessage.getText();
-
-            //Иначе это Broadcast
-            if (targetId != null && targetName != null) {
-                // FIXME: 09.11.2017 Должно быть что-то одно ()
-                if (targetId.equals(myDevice.getClientNearbyKey()) || targetName.equals(myDevice.getClientName())) {
-                    //Если сообщение нам
-                    showReceivedMessage(from, textMessage);
-                } else {
-                    //Если сообщение не нам
-                    // TODO: 09.11.2017 Логика передачи сообщения дальше по цепочке
-                    // FIXME: 09.11.2017 Не добавлять одинаковые сообщения (Добавить UUID собщения)
-                    if (!lostMessages.contains(receivedMessage)) {
-                        lostMessages.add(receivedMessage);
+            //Проверяем это Новое сообщение, или ответ о доставленном сообщении
+            if (receivedMessage.getState() == Message.State.DELIVERED_MESSAGE) {
+                lostMessages.remove(receivedMessage.getDeliveredMessage());
+                deliveredLostMessages.add(receivedMessage.getDeliveredMessage());
+            } else {
+                //Работаем с обычным типом сообщения
+                //Определим, это совершенно новое сообщение, или это сообщение мы уже кому-то доставили
+                for (Message message : deliveredLostMessages) {
+                    if (deliveredLostMessages.contains(receivedMessage)) {
+                        //даем ответ отправителю, что такое сообщение уже отправлено, и следует прекратить транслировать его
+                        try {
+                            deliverTargetMessage(
+                                    Message.deliveredMessage(endPointId, message));
+                            return; //Нам не имеет смысла обрабатывать это сообщение, мы его уже доставили
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                            return;
+                        }
                     }
                 }
-            } else {
-                showReceivedMessage("", textMessage);
+
+                String targetId = receivedMessage.getTargetId();
+                String targetName = receivedMessage.getTargetName();
+
+                //Иначе это Broadcast
+                if (targetId != null && targetName != null) {
+                    // FIXME: 09.11.2017 Должно быть что-то одно ()
+                    if (targetId.equals(myDevice.getClientNearbyKey()) ||
+                            targetName.equals(myDevice.getClientName())) {
+                        //Если сообщение нам
+                        messagesAdapter.setMessages(receivedMessage);
+                        scrollToBottom();
+                    } else {
+                        //Если сообщение не нам
+                        if (!lostMessages.contains(receivedMessage)) {
+                            lostMessages.add(receivedMessage);
+                        }
+                    }
+                }
             }
         }
 
@@ -620,21 +663,6 @@ public class MainActivity extends AppCompatActivity {
 
         }
     };
-
-
-    private void searchTargetInNetwork(Message receivedMessage) {
-//        lostMessages.add(receivedMessage);
-
-        //Обновляем список клиентов
-//        clients.clear();
-//        startDiscovery();
-
-    }
-
-    private void showReceivedMessage(String from, String text) {
-        messagesAdapter.setMessages(String.format("%s : %s", from, text));
-        scrollToBottom();
-    }
 
     /**
      * ConnectionLifecycleCallback
@@ -645,6 +673,13 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onConnectionInitiated(String endPoint, ConnectionInfo connectionInfo) {
             debugLog("onConnectionInitiated");
+
+
+//            try {
+//                Thread.sleep(200);
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            }
 
             // Automatically accept the connection on both sides.
             Nearby.Connections.acceptConnection(
@@ -682,17 +717,33 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
-        public void onDisconnected(String s) {
+        public void onDisconnected(String endPoint) {
             debugLog("onDisconnected");
 
             targetId = "";
             targetName = "";
             footer.setText("PEEK"); // FIXME: 07.11.2017 Set Default Text
 
-            Nearby.Connections.disconnectFromEndpoint(googleApiClient, s);
+            Nearby.Connections.disconnectFromEndpoint(googleApiClient, endPoint);
+
+            clientsAdapter.removeClient(
+                    removeDisconnectedClient(endPoint));
         }
     };
 
+    private DeviceInfo removeDisconnectedClient(String endPoint) {
+        DeviceInfo[] devicesInfo = new DeviceInfo[clients.size()];
+        devicesInfo = clients.toArray(devicesInfo);
+
+        //Удаляем дубликаты клиентов с неверными точками доступа
+        for (int i = 0; i < devicesInfo.length; i++) {
+            if (devicesInfo[i].getClientNearbyKey().equals(endPoint)) {
+                clients.remove(devicesInfo[i]);
+                return devicesInfo[i];
+            }
+        }
+        return DeviceInfo.empty();
+    }
 
     /**
      * OTHER
@@ -702,7 +753,7 @@ public class MainActivity extends AppCompatActivity {
      * Проверка разрешений приложения (Для android 6.0 и выше)
      */
     private void checkPermition() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_DENIED) {
             requestPermission();
         }
     }
@@ -729,7 +780,6 @@ public class MainActivity extends AppCompatActivity {
                 textLog, Toast.LENGTH_SHORT).show();
     }
 
-
     private void setupClientsRecyclerView() {
         clientsRecyclerView = findViewById(R.id.recyclerView);
         clientsRecyclerView.setLayoutManager(
@@ -750,10 +800,11 @@ public class MainActivity extends AppCompatActivity {
         messagesRecyclerView.setLayoutManager(linearLayoutManager);
 
         messagesAdapter = new MessagesAdapter();
+        messagesAdapter.setCurrentDevice(myDevice);
         messagesRecyclerView.setAdapter(messagesAdapter);
     }
 
     private void scrollToBottom() {
-        messagesRecyclerView.scrollToPosition(0);
+        messagesRecyclerView.scrollToPosition(messagesAdapter.getItemCount() - 1);
     }
 }

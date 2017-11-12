@@ -11,7 +11,6 @@ import java.util.Collections;
 import java.util.List;
 
 import ru.palestra.wifichat.R;
-import ru.palestra.wifichat.model.DeviceInfo;
 import ru.palestra.wifichat.model.Message;
 
 /**
@@ -20,10 +19,10 @@ import ru.palestra.wifichat.model.Message;
 
 public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.ViewHolder> {
     private List<Message> messages = new ArrayList<>();
-    private DeviceInfo device;
+    private String myDeviceName;
 
-    public void setCurrentDevice(DeviceInfo device) {
-        this.device = device;
+    public void setCurrentDevice(String myDeviceName) {
+        this.myDeviceName = myDeviceName;
     }
 
     public void setMessages(Message message) {
@@ -68,8 +67,8 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.ViewHo
     @Override
     public void onBindViewHolder(MessagesAdapter.ViewHolder holder, int position) {
         Message currentMessage = messages.get(position);
-        if (device != null) {
-            if (currentMessage.getFrom().equals(device.getClientName())) {
+        if (myDeviceName != null) {
+            if (currentMessage.getFrom().equals(myDeviceName)) {
                 holder.message.setText(
                         String.format("ME: %s", currentMessage.getText()));
             } else {

@@ -1,11 +1,9 @@
 package ru.palestra.wifichat.model;
 
-import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
 import com.google.auto.value.AutoValue;
 
-import org.threeten.bp.Instant;
 import org.threeten.bp.LocalDateTime;
 
 import java.io.Serializable;
@@ -24,7 +22,7 @@ public abstract class Message implements Serializable, Comparator<Message> {
     }
 
     @Nullable public abstract String getFrom();
-    public abstract String getTargetId();
+    @Nullable public abstract String getTargetId();
     @Nullable public abstract String getTargetName();
     @Nullable public abstract String getText();
     public abstract String getUUID();
@@ -35,6 +33,9 @@ public abstract class Message implements Serializable, Comparator<Message> {
         return new AutoValue_Message(from, targetId, targetName, text, UUID.randomUUID().toString(), LocalDateTime.now(),null);
     }
 
+    public static Message broadcastMessage(String from, String targetName, String text) {
+        return new AutoValue_Message(from, null, targetName, text, UUID.randomUUID().toString(), LocalDateTime.now(),null);
+    }
 
     public static Message deliveredMessage(String targetId, Message message) {
         return new AutoValue_Message(null, targetId, null, null, UUID.randomUUID().toString(), LocalDateTime.now(), message);

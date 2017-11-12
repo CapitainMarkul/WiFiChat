@@ -2,10 +2,10 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/WiFiChat.iml" filepath="$PROJECT_DIR$/WiFiChat.iml" />
       <module fileurl="file://C:\Work Projects\Android\chatDom\WiFiChat.iml" filepath="C:\Work Projects\Android\chatDom\WiFiChat.iml" />
       <module fileurl="file://C:\Users\da.pavlov1\PavlovDoc\workProject\chatDom\WiFiChat.iml" filepath="C:\Users\da.pavlov1\PavlovDoc\workProject\chatDom\WiFiChat.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
+      <module fileurl="file://$PROJECT_DIR$/chatDom.iml" filepath="$PROJECT_DIR$/chatDom.iml" />
       <module fileurl="file://C:\Users\da.pavlov1\PavlovDoc\workProject\WiFiChat\chatDom.iml" filepath="C:\Users\da.pavlov1\PavlovDoc\workProject\WiFiChat\chatDom.iml" />
     </modules>
   </component>

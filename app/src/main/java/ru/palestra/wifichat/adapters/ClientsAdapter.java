@@ -11,6 +11,7 @@ import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import ru.palestra.wifichat.MainActivity;
 import ru.palestra.wifichat.R;
@@ -39,6 +40,12 @@ public class ClientsAdapter extends RecyclerView.Adapter<ClientsAdapter.ViewHold
         }
 
         clients.add(client);
+        notifyDataSetChanged();
+    }
+
+    public void setAllClients(Set<DeviceInfo> clients) {
+        this.clients.clear();
+        this.clients.addAll(clients);
         notifyDataSetChanged();
     }
 

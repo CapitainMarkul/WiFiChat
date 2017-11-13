@@ -2,19 +2,15 @@ package ru.palestra.wifichat;
 
 import android.support.annotation.Nullable;
 
-import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Status;
 import com.google.android.gms.nearby.Nearby;
-import com.google.android.gms.nearby.connection.AdvertisingOptions;
 import com.google.android.gms.nearby.connection.ConnectionInfo;
 import com.google.android.gms.nearby.connection.ConnectionLifecycleCallback;
-import com.google.android.gms.nearby.connection.Connections;
-import com.google.android.gms.nearby.connection.DiscoveryOptions;
-import com.google.android.gms.nearby.connection.EndpointDiscoveryCallback;
+import com.google.android.gms.nearby.connection.ConnectionResolution;
+import com.google.android.gms.nearby.connection.ConnectionsStatusCodes;
 import com.google.android.gms.nearby.connection.Payload;
 import com.google.android.gms.nearby.connection.PayloadCallback;
-import com.google.android.gms.nearby.connection.Strategy;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -27,6 +23,7 @@ import java.util.Set;
 import ru.palestra.wifichat.model.DeviceInfo;
 import ru.palestra.wifichat.model.Message;
 import ru.palestra.wifichat.services.SharedPrefServiceImpl;
+import ru.palestra.wifichat.utils.Logger;
 
 /**
  * Created by Dmitry on 12.11.2017.
@@ -39,7 +36,7 @@ public class MainPresenter {
     private String targetId;
     private String targetName;
 
-    private GoogleApiClient googleApiClient;
+//    private GoogleApiClient googleApiClient;
 
     private List<Message> lostMessages = new ArrayList<>(); //Недоставленные сообщения
     private List<Message> deliveredLostMessages = new ArrayList<>(); //Доставленные "Недоставленные" сообщения
@@ -47,8 +44,6 @@ public class MainPresenter {
     private Set<DeviceInfo> potentialClients = new HashSet<>();
     private Set<DeviceInfo> connectedClients = new HashSet<>();
 
-    public static final String SERVICE_ID = "palestra.wifichat";
-    public static final Strategy STRATEGY = Strategy.P2P_CLUSTER;
 
     private Map<Message, Set<DeviceInfo>> broadCastBanList = new HashMap<>();
     private boolean sendingLostMessageComplete = true;
@@ -56,13 +51,11 @@ public class MainPresenter {
     private SharedPrefServiceImpl sharedPrefService;
     private MainActivity mainActivity;
 
-    private ConnectionLifecycleCallback connectionLifecycleCallback;
     private MainActivity.StatusRequestConnectionListener statusRequestConnectionListener;
 
-    public MainPresenter(MainActivity mainActivity, ConnectionLifecycleCallback connectionLifecycleCallback,
+    public MainPresenter(MainActivity mainActivity,
                          MainActivity.StatusRequestConnectionListener statusRequestConnectionListener) {
         this.mainActivity = mainActivity;
-        this.connectionLifecycleCallback = connectionLifecycleCallback;
         this.statusRequestConnectionListener = statusRequestConnectionListener;
 
         sharedPrefService = new SharedPrefServiceImpl(mainActivity);
@@ -105,16 +98,16 @@ public class MainPresenter {
         }
     }
 
-    public void foundNewEndPoint(DeviceInfo deviceInfo) {
+    public void foundNewEndPoint(String idEndPoint, String nameEndPoint) {
         boolean isNewDevice = true;
         for (DeviceInfo device : connectedClients) {
-            if (device.getClientName().equals(deviceInfo.getClientName()) &&
-                    !device.getClientNearbyKey().equals(device.getClientNearbyKey())) {
+            if (device.getClientName().equals(nameEndPoint) &&
+                    !device.getClientNearbyKey().equals(idEndPoint)) {
                 isNewDevice = false;
                 //У подключенного устройства сменился Id
                 disconnectedDevice(device.getClientNearbyKey());
                 break;
-            } else if (device.getClientNearbyKey().equals(deviceInfo.getClientNearbyKey())) {
+            } else if (device.getClientNearbyKey().equals(idEndPoint)) {
                 //Защита от "Польша", "Пол"
                 isNewDevice = false;
                 break;
@@ -122,8 +115,9 @@ public class MainPresenter {
         }
 
         if (isNewDevice) {
-            potentialClients.add(deviceInfo);
-            mainActivity.updatePotentialClient(deviceInfo);
+            DeviceInfo newDevice = DeviceInfo.otherDevice(nameEndPoint, idEndPoint, null);
+            potentialClients.add(newDevice);
+            mainActivity.updatePotentialClient(newDevice);
 
             //Auto Accept Connection
             //(Раскомментировать) Сам инициирует со всеми Коннект
@@ -131,49 +125,49 @@ public class MainPresenter {
 //            mainActivity.requestConnection(deviceInfo, null);
 
             //Проверим, этому устройству предназначались какие-либо сообщения?
-            foundNewDevice(deviceInfo);
+            foundNewDevice(newDevice);
         }
     }
 
 
     // TODO: 12.11.2017 Упростить
-    public void tryConnectDevices() {
-        if (connectedClients.isEmpty()) {
-            for (DeviceInfo potentialDevice : potentialClients) {
-//                try {
-//                    Thread.sleep(200);
-
-                requestConnection(potentialDevice, null,
-                        connectionLifecycleCallback, statusRequestConnectionListener);
-//                } catch (InterruptedException e) {
-//                    e.printStackTrace();
-//                }
-            }
-        } else {
-            for (DeviceInfo connectedDevice : connectedClients) {
-
-                DeviceInfo[] potentialClientsArray = new DeviceInfo[potentialClients.size()];
-                potentialClientsArray = potentialClients.toArray(potentialClientsArray);
-
-                for (DeviceInfo potentialDevice : potentialClientsArray) {
-                    if (connectedDevice.getClientName().equals(potentialDevice.getClientName())) {
-                        //Пропускаем
-                        potentialClients.remove(potentialDevice);
-                        continue;
-                    }
-
-//                    try {
-//                        Thread.sleep(200);
-
-                    requestConnection(potentialDevice, null,
-                            connectionLifecycleCallback, statusRequestConnectionListener);
-//                    } catch (InterruptedException e) {
-//                        e.printStackTrace();
+//    public void tryConnectDevices() {
+//        if (connectedClients.isEmpty()) {
+//            for (DeviceInfo potentialDevice : potentialClients) {
+////                try {
+////                    Thread.sleep(200);
+//
+//                requestConnection(potentialDevice, null,
+//                        connectionLifecycleCallback, statusRequestConnectionListener);
+////                } catch (InterruptedException e) {
+////                    e.printStackTrace();
+////                }
+//            }
+//        } else {
+//            for (DeviceInfo connectedDevice : connectedClients) {
+//
+//                DeviceInfo[] potentialClientsArray = new DeviceInfo[potentialClients.size()];
+//                potentialClientsArray = potentialClients.toArray(potentialClientsArray);
+//
+//                for (DeviceInfo potentialDevice : potentialClientsArray) {
+//                    if (connectedDevice.getClientName().equals(potentialDevice.getClientName())) {
+//                        //Пропускаем
+//                        potentialClients.remove(potentialDevice);
+//                        continue;
 //                    }
-                }
-            }
-        }
-    }
+//
+////                    try {
+////                        Thread.sleep(200);
+//
+//                    requestConnection(potentialDevice, null,
+//                            connectionLifecycleCallback, statusRequestConnectionListener);
+////                    } catch (InterruptedException e) {
+////                        e.printStackTrace();
+////                    }
+//                }
+//            }
+//        }
+//    }
 
     /**
      * ==========
@@ -181,20 +175,20 @@ public class MainPresenter {
      * ==========
      */
 
-    public void startAdvertising(ConnectionLifecycleCallback connectionLifecycleCallback,
-                                 ResultCallback<? super Connections.StartAdvertisingResult> resultCallback) {
-        Nearby.Connections.startAdvertising(
-                googleApiClient,
-                myDevice.getClientName(),
-                SERVICE_ID,
-                connectionLifecycleCallback,
-                new AdvertisingOptions(STRATEGY))
-                .setResultCallback(resultCallback);
-    }
+//    public void startAdvertising(ConnectionLifecycleCallback connectionLifecycleCallback,
+//                                 ResultCallback<? super Connections.StartAdvertisingResult> resultCallback) {
+//        Nearby.Connections.startAdvertising(
+//                googleApiClient,
+//                myDevice.getClientName(),
+//                SERVICE_ID,
+//                connectionLifecycleCallback,
+//                new AdvertisingOptions(STRATEGY))
+//                .setResultCallback(resultCallback);
+//    }
 
-    public void stopAdvertising() {
-        Nearby.Connections.stopAdvertising(googleApiClient);
-    }
+//    public void stopAdvertising() {
+//        Nearby.Connections.stopAdvertising(googleApiClient);
+//    }
 
     /**
      * ==========
@@ -202,19 +196,19 @@ public class MainPresenter {
      * ==========
      */
 
-    public void startDiscovery(EndpointDiscoveryCallback endpointDiscoveryCallback,
-                               ResultCallback<? super Status> resultCallback) {
-        Nearby.Connections.startDiscovery(
-                googleApiClient,
-                SERVICE_ID,
-                endpointDiscoveryCallback,
-                new DiscoveryOptions(STRATEGY))
-                .setResultCallback(resultCallback);
-    }
-
-    public void stopDiscovery() {
-        Nearby.Connections.stopDiscovery(googleApiClient);
-    }
+//    public void startDiscovery(EndpointDiscoveryCallback endpointDiscoveryCallback,
+//                               ResultCallback<? super Status> resultCallback) {
+//        Nearby.Connections.startDiscovery(
+//                googleApiClient,
+//                SERVICE_ID,
+//                endpointDiscoveryCallback,
+//                new DiscoveryOptions(STRATEGY))
+//                .setResultCallback(resultCallback);
+//    }
+//
+//    public void stopDiscovery() {
+//        Nearby.Connections.stopDiscovery(googleApiClient);
+//    }
 
     /**
      * ==========
@@ -226,7 +220,7 @@ public class MainPresenter {
                                   ConnectionLifecycleCallback connectionLifecycleCallback,
                                   MainActivity.StatusRequestConnectionListener statusRequestConnectionListener) {
         Nearby.Connections.requestConnection(
-                googleApiClient,
+                App.googleApiClient(),
                 myDevice.getClientName(),
                 client.getClientNearbyKey(),
                 connectionLifecycleCallback)
@@ -260,6 +254,7 @@ public class MainPresenter {
         potentialClients.remove(client);
     }
 
+
     public void lostEndPoint(String endPointId) {
         //Потерявшиеся клиенты
         DeviceInfo lostDevices = searchLostedDevice(endPointId);
@@ -285,7 +280,7 @@ public class MainPresenter {
         mainActivity.debugLog("Send broadcast message");
 
         Nearby.Connections.sendPayload(
-                googleApiClient,
+                App.googleApiClient(),
                 createClientsEndPoints(connectedClients, message.getFrom()),
                 Payload.fromBytes(
                         MessageConverter.toBytes(message)))
@@ -387,9 +382,9 @@ public class MainPresenter {
             mainActivity.updatePotentialClient(connectedClients);
 
 
-            Nearby.Connections.disconnectFromEndpoint(googleApiClient, endPointId); // FIXME: 13.11.2017 Я не уверен
+            Nearby.Connections.disconnectFromEndpoint(App.googleApiClient(), endPointId); // FIXME: 13.11.2017 Я не уверен
         }
-        Nearby.Connections.disconnectFromEndpoint(googleApiClient, endPointId);
+        Nearby.Connections.disconnectFromEndpoint(App.googleApiClient(), endPointId);
     }
 
     public DeviceInfo searchDisconnectedDevice(String endPointId) {
@@ -416,9 +411,9 @@ public class MainPresenter {
         return DeviceInfo.empty();
     }
 
-    public DeviceInfo checkNewClient(String endPoint, ConnectionInfo connectionInfo) {
+    public DeviceInfo checkNewClient(String idEndPoint, String nameEndPoint) {
         DeviceInfo tempClient =
-                DeviceInfo.otherDevice(connectionInfo.getEndpointName(), endPoint, null);
+                DeviceInfo.otherDevice(nameEndPoint, idEndPoint, null);
         if (!connectedClients.contains(tempClient)) {
             connectedClients.add(tempClient);
             return tempClient;
@@ -444,6 +439,30 @@ public class MainPresenter {
     }
 
     public void foundNewDevice(DeviceInfo deviceInfo) {
+        ConnectionLifecycleCallback temp = new ConnectionLifecycleCallback() {
+            @Override
+            public void onConnectionInitiated(String s, ConnectionInfo connectionInfo) {
+
+            }
+
+            @Override
+            public void onConnectionResult(String s, ConnectionResolution result) {
+                switch (result.getStatus().getStatusCode()) {
+                    case ConnectionsStatusCodes.STATUS_OK:
+                        Logger.debugLog("Connect: OK");
+                        break;
+                    case ConnectionsStatusCodes.STATUS_CONNECTION_REJECTED:
+                        Logger.errorLog("Connect: FAIL" + result.getStatus());
+                        break;
+                }
+            }
+
+            @Override
+            public void onDisconnected(String s) {
+
+            }
+        };
+
         // После нахождения нового устройства проверяем, ему ли предназначалось сообщение
         for (Message message : lostMessages) {
             //Мы только что нашли того, кого искали. Немедленно коннектимся к нему
@@ -452,7 +471,9 @@ public class MainPresenter {
                 //Можно попробовать, остановить discover, становить соединение, передать сообщение
                 // и снова начать discover
                 requestConnection(deviceInfo, message,
-                        connectionLifecycleCallback, statusRequestConnectionListener);
+                        temp, statusRequestConnectionListener);
+
+                // TODO: 13.11.2017  connectionLifecycleCallback -> он в Сервисе
             }
         }
 
@@ -502,7 +523,7 @@ public class MainPresenter {
         mainActivity.debugLog("Send target: " + message.getTargetId());
 
         Nearby.Connections.sendPayload(
-                googleApiClient,
+                App.googleApiClient(),
                 message.getTargetId(),
                 Payload.fromBytes(
                         MessageConverter.toBytes(message)))
@@ -522,7 +543,7 @@ public class MainPresenter {
 
     public void acceptConnection(String endPointId, PayloadCallback payloadCallback, ResultCallback<? super Status> resultCallback) {
         Nearby.Connections.acceptConnection(
-                googleApiClient,
+                App.googleApiClient(),
                 endPointId,
                 payloadCallback)
                 .setResultCallback(resultCallback);
@@ -539,13 +560,11 @@ public class MainPresenter {
         return allEndPoints;
     }
 
-    public void initGoogleClient(GoogleApiClient.Builder builder) {
-        googleApiClient = builder.build();
-    }
 
-    public GoogleApiClient getGoogleApiClient() {
-        return googleApiClient;
-    }
+
+//    public GoogleApiClient getGoogleApiClient() {
+//        return googleApiClient;
+//    }
 
     public String getDeviceName() {
         return myDevice.getClientName();

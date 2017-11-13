@@ -1,9 +1,19 @@
 package ru.palestra.wifichat;
 
+import android.support.annotation.Nullable;
+
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.ResultCallback;
+import com.google.android.gms.common.api.Status;
 import com.google.android.gms.nearby.Nearby;
+import com.google.android.gms.nearby.connection.AdvertisingOptions;
 import com.google.android.gms.nearby.connection.ConnectionInfo;
+import com.google.android.gms.nearby.connection.ConnectionLifecycleCallback;
+import com.google.android.gms.nearby.connection.Connections;
+import com.google.android.gms.nearby.connection.DiscoveryOptions;
+import com.google.android.gms.nearby.connection.EndpointDiscoveryCallback;
 import com.google.android.gms.nearby.connection.Payload;
+import com.google.android.gms.nearby.connection.PayloadCallback;
 import com.google.android.gms.nearby.connection.Strategy;
 
 import java.io.IOException;
@@ -46,8 +56,14 @@ public class MainPresenter {
     private SharedPrefServiceImpl sharedPrefService;
     private MainActivity mainActivity;
 
-    public MainPresenter(MainActivity mainActivity) {
+    private ConnectionLifecycleCallback connectionLifecycleCallback;
+    private MainActivity.StatusRequestConnectionListener statusRequestConnectionListener;
+
+    public MainPresenter(MainActivity mainActivity, ConnectionLifecycleCallback connectionLifecycleCallback,
+                         MainActivity.StatusRequestConnectionListener statusRequestConnectionListener) {
         this.mainActivity = mainActivity;
+        this.connectionLifecycleCallback = connectionLifecycleCallback;
+        this.statusRequestConnectionListener = statusRequestConnectionListener;
 
         sharedPrefService = new SharedPrefServiceImpl(mainActivity);
         myDevice = sharedPrefService.getInfoAboutMyDevice();
@@ -76,12 +92,8 @@ public class MainPresenter {
                 mainActivity.debugLog(String.format("Отправка всем", targetName, targetId));
             }
 
-            try {
-                sendBroadcastMessage(
-                        Message.newMessage(myDevice.getClientName(), targetId, targetName, textMessage));
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            sendBroadcastMessage(
+                    Message.newMessage(myDevice.getClientName(), targetId, targetName, textMessage));
         } else {
             mainActivity.debugLog("Вообще некому отправить :(, но я сохраню");
 
@@ -96,17 +108,16 @@ public class MainPresenter {
     public void foundNewEndPoint(DeviceInfo deviceInfo) {
         boolean isNewDevice = true;
         for (DeviceInfo device : connectedClients) {
-            if (device.getClientName().equals(deviceInfo.getClientName())) {
-                if (!device.getClientNearbyKey().equals(device.getClientNearbyKey())) {
-                    isNewDevice = false;
-
-                    //что-то произошло с прошлым устройством
-                    disconnectedDevice(device.getClientNearbyKey());
-                    break;
-                } else {
-                    isNewDevice = false;
-                    break;
-                }
+            if (device.getClientName().equals(deviceInfo.getClientName()) &&
+                    !device.getClientNearbyKey().equals(device.getClientNearbyKey())) {
+                isNewDevice = false;
+                //У подключенного устройства сменился Id
+                disconnectedDevice(device.getClientNearbyKey());
+                break;
+            } else if (device.getClientNearbyKey().equals(deviceInfo.getClientNearbyKey())) {
+                //Защита от "Польша", "Пол"
+                isNewDevice = false;
+                break;
             }
         }
 
@@ -124,45 +135,129 @@ public class MainPresenter {
         }
     }
 
+
     // TODO: 12.11.2017 Упростить
     public void tryConnectDevices() {
         if (connectedClients.isEmpty()) {
             for (DeviceInfo potentialDevice : potentialClients) {
-                try {
-                    Thread.sleep(200);
+//                try {
+//                    Thread.sleep(200);
 
-                    mainActivity.requestConnection(potentialDevice, null);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
+                requestConnection(potentialDevice, null,
+                        connectionLifecycleCallback, statusRequestConnectionListener);
+//                } catch (InterruptedException e) {
+//                    e.printStackTrace();
+//                }
             }
         } else {
             for (DeviceInfo connectedDevice : connectedClients) {
-                for (DeviceInfo potentialDevice : potentialClients) {
+
+                DeviceInfo[] potentialClientsArray = new DeviceInfo[potentialClients.size()];
+                potentialClientsArray = potentialClients.toArray(potentialClientsArray);
+
+                for (DeviceInfo potentialDevice : potentialClientsArray) {
                     if (connectedDevice.getClientName().equals(potentialDevice.getClientName())) {
                         //Пропускаем
-                        // TODO: 12.11.2017 Удалять из otentialClients
+                        potentialClients.remove(potentialDevice);
                         continue;
                     }
 
-                    try {
-                        Thread.sleep(200);
+//                    try {
+//                        Thread.sleep(200);
 
-                        mainActivity.requestConnection(potentialDevice, null);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
+                    requestConnection(potentialDevice, null,
+                            connectionLifecycleCallback, statusRequestConnectionListener);
+//                    } catch (InterruptedException e) {
+//                        e.printStackTrace();
+//                    }
                 }
             }
         }
     }
 
-    public void removePotentialClient(DeviceInfo client) {
-        potentialClients.remove(client);
+    /**
+     * ==========
+     * 2 ЭТАП
+     * ==========
+     */
+
+    public void startAdvertising(ConnectionLifecycleCallback connectionLifecycleCallback,
+                                 ResultCallback<? super Connections.StartAdvertisingResult> resultCallback) {
+        Nearby.Connections.startAdvertising(
+                googleApiClient,
+                myDevice.getClientName(),
+                SERVICE_ID,
+                connectionLifecycleCallback,
+                new AdvertisingOptions(STRATEGY))
+                .setResultCallback(resultCallback);
     }
 
-    public void addConnectedClient(DeviceInfo client) {
-        connectedClients.add(client);
+    public void stopAdvertising() {
+        Nearby.Connections.stopAdvertising(googleApiClient);
+    }
+
+    /**
+     * ==========
+     * 3 ЭТАП
+     * ==========
+     */
+
+    public void startDiscovery(EndpointDiscoveryCallback endpointDiscoveryCallback,
+                               ResultCallback<? super Status> resultCallback) {
+        Nearby.Connections.startDiscovery(
+                googleApiClient,
+                SERVICE_ID,
+                endpointDiscoveryCallback,
+                new DiscoveryOptions(STRATEGY))
+                .setResultCallback(resultCallback);
+    }
+
+    public void stopDiscovery() {
+        Nearby.Connections.stopDiscovery(googleApiClient);
+    }
+
+    /**
+     * ==========
+     * 4 ЭТАП
+     * ==========
+     */
+
+    public void requestConnection(DeviceInfo client, @Nullable Message lostMessage,
+                                  ConnectionLifecycleCallback connectionLifecycleCallback,
+                                  MainActivity.StatusRequestConnectionListener statusRequestConnectionListener) {
+        Nearby.Connections.requestConnection(
+                googleApiClient,
+                myDevice.getClientName(),
+                client.getClientNearbyKey(),
+                connectionLifecycleCallback)
+                .setResultCallback(status -> {
+                    if (status.isSuccess()) {
+                        statusRequestConnectionListener.onConnected(client, status);
+
+                        if (lostMessage != null) {
+                            deliverTargetMessage(lostMessage);
+                        }
+                    } else {
+                        statusRequestConnectionListener.onConnected(client, status);
+
+                        //Мертвые точки
+                        if (status.getStatus().toString().contains("STATUS_ENDPOINT_UNKNOWN")) {
+                            potentialClients.remove(client);
+                            mainActivity.removePotentialClient(client);
+                        }
+                    }
+                });
+    }
+
+    /**
+     * ==========
+     * 5 ЭТАП
+     * ==========
+     */
+
+
+    public void removePotentialClient(DeviceInfo client) {
+        potentialClients.remove(client);
     }
 
     public void lostEndPoint(String endPointId) {
@@ -180,17 +275,13 @@ public class MainPresenter {
     }
 
     public void failDelivered(Message message) {
-        try {
-            sendBroadcastMessage(message);
-            mainActivity.debugLog("Send Lost Message on all");
+        sendBroadcastMessage(message);
+        mainActivity.debugLog("Send Lost Message on all");
 
-            broadCastBanList.put(message, connectedClients); //Сохраняем всех подключенных клиентов, кому пытались отправить сообщение
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        broadCastBanList.put(message, connectedClients); //Сохраняем всех подключенных клиентов, кому пытались отправить сообщение
     }
 
-    private void sendBroadcastMessage(Message message) throws IOException {
+    private void sendBroadcastMessage(Message message) {
         mainActivity.debugLog("Send broadcast message");
 
         Nearby.Connections.sendPayload(
@@ -209,17 +300,14 @@ public class MainPresenter {
                         mainActivity.debugLog("Send FAIL!!" + status.getStatus());
 
                         //Если мы не можем найти пользователя с указанным Id,
-                        //посылаем сообщение через рассылку
-                        if (status.getStatus().equals("STATUS_ENDPOINT_UNKNOWN")) {
-                            try {
-//                                lostMessages.remove(message);   // TODO: 12.11.2017 Проверить, нужно или нет? Возможно это сообщение наоборот необходимо добавить в "потерянные"
-                                sendBroadcastMessage(
-                                        Message.broadcastMessage(message.getFrom(), message.getTargetName(), message.getText()));
+                        //посылаем сообщение через рассылку, сохраняем только имя получателя
+                        if (status.getStatus().toString().contains("STATUS_ENDPOINT_UNKNOWN")) {
+                            lostMessages.add(
+                                    Message.broadcastMessage(message.getFrom(), message.getTargetName(), message.getText()));
 
-                                disconnectedDevice(message.getTargetId());
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
+                            disconnectedDevice(message.getTargetId());
+                        } else {
+                            lostMessages.add(message);
                         }
                     }
                 });
@@ -244,14 +332,9 @@ public class MainPresenter {
             for (Message message : deliveredLostMessages) {
                 if (deliveredLostMessages.contains(receivedMessage)) {
                     //даем ответ отправителю, что такое сообщение уже отправлено, и следует прекратить транслировать его
-                    try {
-                        deliverTargetMessage(
-                                Message.deliveredMessage(endPointId, message));
-                        return; //Нам не имеет смысла обрабатывать это сообщение, мы его уже доставили
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                        return;
-                    }
+                    deliverTargetMessage(
+                            Message.deliveredMessage(endPointId, message));
+                    return; //Нам не имеет смысла обрабатывать это сообщение, мы его уже доставили
                 }
             }
 
@@ -270,12 +353,9 @@ public class MainPresenter {
                 mainActivity.showMessageForMe(receivedMessage);
 
                 //Сообщаем, что получили сообщение
-                try {
-                    deliverTargetMessage(
-                            Message.deliveredMessage(endPointId, receivedMessage));
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+                deliverTargetMessage(
+                        Message.deliveredMessage(endPointId, receivedMessage));
+
             } else if (targetId == null && targetName == null) {
                 //Если target == null, значит это Broadcast
                 mainActivity.showBroadcastMessage(receivedMessage);
@@ -287,28 +367,29 @@ public class MainPresenter {
         }
     }
 
-    public void connectedNewDevice(DeviceInfo device) {
+    public void saveConnectedDevice(DeviceInfo device) {
         connectedClients.add(device);
     }
 
     public void disconnectedDevice(String endPointId) {
-//        setDefaultOptions();
-
         DeviceInfo disconnectedDevice = searchDisconnectedDevice(endPointId);
         if (disconnectedDevice.getState() != DeviceInfo.State.EMPTY) {
             //Если отключился другой клиент, то не нужно очищать цель
-            if (targetId != null && targetName != null) {
-                if (targetId.equals(endPointId) || targetName.equals(disconnectedDevice.getClientName())) {
-                    targetId = null;
-                    targetName = null;
-                }
-            }
+            //Если произощел дисконнект, нужно ли держать цель ?
+//            if (targetId != null && targetName != null) {
+//                if (targetId.equals(endPointId) || targetName.equals(disconnectedDevice.getClientName())) {
+//                    targetId = null;
+//                    targetName = null;
+//                }
+//            }
 
             connectedClients.remove(disconnectedDevice);
             mainActivity.updatePotentialClient(connectedClients);
 
-            Nearby.Connections.disconnectFromEndpoint(googleApiClient, endPointId);
+
+            Nearby.Connections.disconnectFromEndpoint(googleApiClient, endPointId); // FIXME: 13.11.2017 Я не уверен
         }
+        Nearby.Connections.disconnectFromEndpoint(googleApiClient, endPointId);
     }
 
     public DeviceInfo searchDisconnectedDevice(String endPointId) {
@@ -336,7 +417,8 @@ public class MainPresenter {
     }
 
     public DeviceInfo checkNewClient(String endPoint, ConnectionInfo connectionInfo) {
-        DeviceInfo tempClient = DeviceInfo.otherDevice(connectionInfo.getEndpointName(), endPoint, null);
+        DeviceInfo tempClient =
+                DeviceInfo.otherDevice(connectionInfo.getEndpointName(), endPoint, null);
         if (!connectedClients.contains(tempClient)) {
             connectedClients.add(tempClient);
             return tempClient;
@@ -363,21 +445,24 @@ public class MainPresenter {
 
     public void foundNewDevice(DeviceInfo deviceInfo) {
         // После нахождения нового устройства проверяем, ему ли предназначалось сообщение
-        try {
-            for (Message message : lostMessages) {
-                //Мы только что нашли того, кого искали. Немедленно коннектимся к нему
-                if (message.getTargetId().equals(deviceInfo.getClientNearbyKey()) ||
-                        message.getTargetName().equals(deviceInfo.getClientName())) {
-                    //Можно попробовать, остановить discover, становить соединение, передать сообщение
-                    // и снова начать discover
-                    mainActivity.requestConnection(deviceInfo, message);
-                }
+        for (Message message : lostMessages) {
+            //Мы только что нашли того, кого искали. Немедленно коннектимся к нему
+            if ((message.getTargetId() != null && message.getTargetId().equals(deviceInfo.getClientNearbyKey())) ||
+                    (message.getTargetName() != null && message.getTargetName().equals(deviceInfo.getClientName()))) {
+                //Можно попробовать, остановить discover, становить соединение, передать сообщение
+                // и снова начать discover
+                requestConnection(deviceInfo, message,
+                        connectionLifecycleCallback, statusRequestConnectionListener);
             }
-            sendLostMessage();
-        } catch (IOException e) {
-            e.printStackTrace();
         }
+
+//        try {
+//            sendLostMessage();  // TODO: 13.11.2017 Проверить
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
     }
+
 
     public void sendLostMessage() throws IOException {
         mainActivity.debugLog(String.format("Timer! Lost: %s, Deliver: %s", lostMessages.size(), deliveredLostMessages.size()));
@@ -388,10 +473,6 @@ public class MainPresenter {
             broadCastBanList.clear();
 
             if (!lostMessages.isEmpty()) {
-//                Intent intent = new Intent(getApplicationContext(), SendLostMessage.class);
-//                intent.putExtra("lostMessages", Parcels.wrap(lostMessages));
-//                startService(intent);
-
                 Message[] messages = new Message[lostMessages.size()];
                 messages = lostMessages.toArray(messages);
 
@@ -402,7 +483,7 @@ public class MainPresenter {
                                 !broadCastBanList.get(message).contains(client)) {
                             //Проверяем, это тот клиент который нам нужен
                             if ((message.getTargetId() != null && message.getTargetId().equals(client.getClientNearbyKey())) ||
-                                    (message.getTargetName()!=null && message.getTargetName().equals(client.getClientName()))) {
+                                    (message.getTargetName() != null && message.getTargetName().equals(client.getClientName()))) {
 
                                 //Доставили получателю
                                 deliverTargetMessage(message);
@@ -417,7 +498,7 @@ public class MainPresenter {
         }
     }
 
-    public void deliverTargetMessage(Message message) throws IOException {
+    public void deliverTargetMessage(Message message) {
         mainActivity.debugLog("Send target: " + message.getTargetId());
 
         Nearby.Connections.sendPayload(
@@ -437,6 +518,14 @@ public class MainPresenter {
                         failDelivered(message);
                     }
                 });
+    }
+
+    public void acceptConnection(String endPointId, PayloadCallback payloadCallback, ResultCallback<? super Status> resultCallback) {
+        Nearby.Connections.acceptConnection(
+                googleApiClient,
+                endPointId,
+                payloadCallback)
+                .setResultCallback(resultCallback);
     }
 
     private List<String> createClientsEndPoints(Set<DeviceInfo> clients, String fromName) {
@@ -460,9 +549,5 @@ public class MainPresenter {
 
     public String getDeviceName() {
         return myDevice.getClientName();
-    }
-
-    public String getServiceId() {
-        return SERVICE_ID;
     }
 }

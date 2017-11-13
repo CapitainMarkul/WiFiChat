@@ -38,7 +38,7 @@
                     android:text="Start Discovering"/>
 
                 <Button
-                    android:id="@+id/btn_broadcast"
+                    android:id="@+id/btn_default_option"
                     android:layout_width="100dp"
                     android:layout_height="match_parent"
                     android:text="Drop"/>

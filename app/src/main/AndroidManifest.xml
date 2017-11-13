@@ -12,21 +12,23 @@
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
 
     <application
+        android:name=".App"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:name=".App"
         android:theme="@style/AppTheme">
         <activity
             android:name=".MainActivity"
             android:launchMode="singleTop"
+            android:screenOrientation="portrait"
             android:windowSoftInputMode="adjustPan">
         </activity>
 
         <activity
             android:name=".LoginActivity"
             android:theme="@style/Theme.AppCompat.NoActionBar"
+            android:screenOrientation="portrait"
             android:windowSoftInputMode="adjustPan">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -34,11 +36,15 @@
             </intent-filter>
         </activity>
 
-        <!--<service-->
-        <!--android:name=".services.SendLostMessage"-->
-        <!--android:enabled="true"-->
-        <!--android:exported="true"-->
-        <!--android:permission="android.permission.INTERNET"/>-->
+        <service
+            android:name=".services.SendLostMessageService"
+            android:enabled="true"
+            android:permission="android.permission.INTERNET"/>
+
+        <service
+            android:name=".services.ConnectToClientsService"
+            android:enabled="true"
+            android:permission="android.permission.INTERNET"/>
     </application>
 
 </manifest>

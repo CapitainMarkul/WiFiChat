@@ -33,7 +33,8 @@ public class ClientsAdapter extends RecyclerView.Adapter<ClientsAdapter.ViewHold
 
         //Удаляем дубликаты клиентов с неверными точками доступа
         for (int i = 0; i < devicesInfo.length; i++) {
-            if (devicesInfo[i].getClientName().equals(client.getClientName())) {
+            if (devicesInfo[i].getClientName().equals(client.getClientName())
+                    || devicesInfo[i].getClientNearbyKey().equals(client.getClientNearbyKey())) {
                 clients.remove(devicesInfo[i]);
                 notifyItemRemoved(i);
             }
@@ -50,17 +51,8 @@ public class ClientsAdapter extends RecyclerView.Adapter<ClientsAdapter.ViewHold
     }
 
     public void removeClient(DeviceInfo device) {
-        DeviceInfo[] devicesInfo = new DeviceInfo[clients.size()];
-        devicesInfo = clients.toArray(devicesInfo);
-
         if (device.getState() != DeviceInfo.State.EMPTY) {
-            //Удаляем дубликаты клиентов с неверными точками доступа
-            for (int i = 0; i < devicesInfo.length; i++) {
-                if (devicesInfo[i].getClientNearbyKey().equals(device.getClientNearbyKey())) {
-                    clients.remove(devicesInfo[i]);
-                    notifyItemRemoved(i);
-                }
-            }
+            clients.remove(device);
         }
     }
 

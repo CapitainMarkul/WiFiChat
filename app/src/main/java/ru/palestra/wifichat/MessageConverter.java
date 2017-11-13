@@ -17,10 +17,15 @@ public class MessageConverter {
         //no instance
     }
 
-    public static byte[] toBytes(Message message) throws IOException {
+    public static byte[] toBytes(Message message) {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        ObjectOutputStream objectOS = new ObjectOutputStream(outputStream);
-        objectOS.writeObject(message);
+        ObjectOutputStream objectOS;
+        try {
+            objectOS = new ObjectOutputStream(outputStream);
+            objectOS.writeObject(message);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         return outputStream.toByteArray();
     }
 

@@ -128,7 +128,8 @@ public class MainActivity extends AppCompatActivity {
     private void stopServices() {
         // FIXME: 13.11.2017 Падает, если мы вышли, но был запланирован AlarmMAnager. (GoogleApiClient not init)
         stopService(new Intent(this, SendLostMessageService.class));
-        stopService(new Intent(this, ConnectToClientsService.class));
+        stopService(new Intent(this,
+                ConnectToClientsService.class));
     }
 
     BroadcastReceiver sendLostMessagesReceiver = new BroadcastReceiver() {

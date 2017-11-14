@@ -4,6 +4,7 @@ import android.support.annotation.Nullable;
 
 import com.google.auto.value.AutoValue;
 
+import org.threeten.bp.Clock;
 import org.threeten.bp.LocalDateTime;
 
 import java.io.Serializable;
@@ -17,38 +18,45 @@ import java.util.UUID;
 
 @AutoValue
 public abstract class Message implements Serializable, Comparator<Message> {
-    public enum State{
-        DELIVERED_MESSAGE, NEW_MESSAGE
+    public enum State {
+        DELIVERED_MESSAGE, NEW_MESSAGE, EMPTY_MESSAGE
     }
 
-    @Nullable public abstract String getFrom();
-    @Nullable public abstract String getTargetId();
-    @Nullable public abstract String getTargetName();
-    @Nullable public abstract String getText();
+    @Nullable
+    public abstract String getFrom();
+    @Nullable
+    public abstract String getTargetId();
+    @Nullable
+    public abstract String getTargetName();
+    @Nullable
+    public abstract String getText();
     public abstract String getUUID();
     public abstract LocalDateTime getTimeSend();
-    @Nullable public abstract Message getDeliveredMessage();
+
+    @Nullable
+    public abstract Message getDeliveredMessage();
 
     public static Message newMessage(String from, String targetId, String targetName, String text) {
-        return new AutoValue_Message(from, targetId, targetName, text, UUID.randomUUID().toString(), LocalDateTime.now(),null);
+        return new AutoValue_Message(from, targetId, targetName, text, UUID.randomUUID().toString(), LocalDateTime.now(Clock.systemDefaultZone()), null);
     }
 
-    public static Message broadcastMessage(String from, String targetName, String text) {
-        return new AutoValue_Message(from, null, targetName, text, UUID.randomUUID().toString(), LocalDateTime.now(),null);
+    public static Message broadcastMessage(String from, String targetName, String text, String UUID) {
+        return new AutoValue_Message(from, null, targetName, text, UUID, LocalDateTime.now(Clock.systemDefaultZone()), null);
     }
 
-    public static Message deliveredMessage(String targetId, Message message) {
-        return new AutoValue_Message(null, targetId, null, null, UUID.randomUUID().toString(), LocalDateTime.now(), message);
+    public static Message deliveredMessage(Message message) {
+        return new AutoValue_Message(null, null, null, null, UUID.randomUUID().toString(), LocalDateTime.now(Clock.systemDefaultZone()), message);
     }
 
-//    // TODO: 10.11.2017 Доделай, чтобы МЕНЯ больше не искали
-//    public static Message stopSearchMe(String targetId, Message message) {
-//        return new AutoValue_Message(null, targetId, null, null, UUID.randomUUID().toString(), LocalDateTime.now(), message);
-//    }
+    public static Message empty() {
+        return new AutoValue_Message(null, null, null, null, null, null, null);
+    }
 
-    public State getState(){
-        return getDeliveredMessage() != null ?
-                State.DELIVERED_MESSAGE : State.NEW_MESSAGE;
+    public State getState() {
+        return getUUID() == null ?
+                State.EMPTY_MESSAGE :
+                getDeliveredMessage() == null ?
+                        State.NEW_MESSAGE : State.DELIVERED_MESSAGE;
     }
 
     @Override

@@ -29,9 +29,17 @@ public class MessageConverter {
         return outputStream.toByteArray();
     }
 
-    public static Message getMessage(byte[] data) throws IOException, ClassNotFoundException {
+    public static Message getMessage(byte[] data) {
         ByteArrayInputStream inputStream = new ByteArrayInputStream(data);
-        ObjectInputStream objectIS = new ObjectInputStream(inputStream);
-        return (Message) objectIS.readObject();
+        ObjectInputStream objectIS;
+        try {
+            objectIS = new ObjectInputStream(inputStream);
+
+            return (Message) objectIS.readObject();
+        } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
+
+            return Message.empty();
+        }
     }
 }

@@ -119,8 +119,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startServices() {
-        startService(new Intent(this, SendLostMessageService.class));
         startService(new Intent(this, ConnectToClientsService.class));
+        startService(new Intent(this, SendLostMessageService.class));
     }
 
     private void stopServices() {
@@ -528,7 +528,7 @@ public class MainActivity extends AppCompatActivity {
     private PayloadCallback payloadCallback = new PayloadCallback() {
         @Override
         public void onPayloadReceived(String endPointId, Payload payload) {
-            mainPresenter.receivedRequest(endPointId, payload);
+            mainPresenter.responseFromClient(endPointId, payload);
         }
 
         @Override

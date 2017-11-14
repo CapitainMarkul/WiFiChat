@@ -216,32 +216,32 @@ public class MainPresenter {
      * ==========
      */
 
-    public void requestConnection(DeviceInfo client, @Nullable Message lostMessage,
-                                  ConnectionLifecycleCallback connectionLifecycleCallback,
-                                  MainActivity.StatusRequestConnectionListener statusRequestConnectionListener) {
-        Nearby.Connections.requestConnection(
-                App.googleApiClient(),
-                myDevice.getClientName(),
-                client.getClientNearbyKey(),
-                connectionLifecycleCallback)
-                .setResultCallback(status -> {
-                    if (status.isSuccess()) {
-                        statusRequestConnectionListener.onConnected(client, status);
-
-                        if (lostMessage != null) {
-                            deliverTargetMessage(lostMessage);
-                        }
-                    } else {
-                        statusRequestConnectionListener.onConnected(client, status);
-
-                        //Мертвые точки
-                        if (status.getStatus().toString().contains("STATUS_ENDPOINT_UNKNOWN")) {
-                            potentialClients.remove(client);
-                            mainActivity.removePotentialClient(client);
-                        }
-                    }
-                });
-    }
+//    public void requestConnection(DeviceInfo client, @Nullable Message lostMessage,
+//                                  ConnectionLifecycleCallback connectionLifecycleCallback,
+//                                  MainActivity.StatusRequestConnectionListener statusRequestConnectionListener) {
+//        Nearby.Connections.requestConnection(
+//                App.googleApiClient(),
+//                myDevice.getClientName(),
+//                client.getClientNearbyKey(),
+//                connectionLifecycleCallback)
+//                .setResultCallback(status -> {
+//                    if (status.isSuccess()) {
+//                        statusRequestConnectionListener.onConnected(client, status);
+//
+//                        if (lostMessage != null) {
+//                            deliverTargetMessage(lostMessage);
+//                        }
+//                    } else {
+//                        statusRequestConnectionListener.onConnected(client, status);
+//
+//                        //Мертвые точки
+//                        if (status.getStatus().toString().contains("STATUS_ENDPOINT_UNKNOWN")) {
+//                            potentialClients.remove(client);
+//                            mainActivity.removePotentialClient(client);
+//                        }
+//                    }
+//                });
+//    }
 
     /**
      * ==========
@@ -308,58 +308,54 @@ public class MainPresenter {
                 });
     }
 
-    public void receivedRequest(String endPointId, Payload payload) {
-        Message receivedMessage;
-        try {
-            receivedMessage = MessageConverter.getMessage(payload.asBytes());
-        } catch (IOException | ClassNotFoundException e) {
-            e.printStackTrace();
-            return;
-        }
-
-        //Проверяем это Новое сообщение, или ответ о доставленном сообщении
-        if (receivedMessage.getState() == Message.State.DELIVERED_MESSAGE) {
-            lostMessages.remove(receivedMessage.getDeliveredMessage());
-            deliveredLostMessages.add(receivedMessage.getDeliveredMessage());
-        } else {
-            //Работаем с обычным типом сообщения
-            //Определим, это совершенно новое сообщение, или это сообщение мы уже кому-то доставили
-            for (Message message : deliveredLostMessages) {
-                if (deliveredLostMessages.contains(receivedMessage)) {
-                    //даем ответ отправителю, что такое сообщение уже отправлено, и следует прекратить транслировать его
-                    deliverTargetMessage(
-                            Message.deliveredMessage(endPointId, message));
-                    return; //Нам не имеет смысла обрабатывать это сообщение, мы его уже доставили
-                }
-            }
-
-            String targetId = receivedMessage.getTargetId();
-            String targetName = receivedMessage.getTargetName();
-
-            //Иначе это Broadcast
-            if (targetId != null && targetId.equals(myDevice.getClientNearbyKey())
-                    || (targetName != null && targetName.equals(myDevice.getClientName()))) {
-//                if (targetId.equals(myDevice.getClientNearbyKey()) ||
-//                        targetName.equals(myDevice.getClientName())) {
-                //Если у нас сменился Id, то сообщение доставить нам можно только по нашему имени,
-                //если это произошло, то отправляем сообщение, что не нужно нас искать
-
-                //Если сообщение нам
-                mainActivity.showMessageForMe(receivedMessage);
-
-                //Сообщаем, что получили сообщение
-                deliverTargetMessage(
-                        Message.deliveredMessage(endPointId, receivedMessage));
-
-            } else if (targetId == null && targetName == null) {
-                //Если target == null, значит это Broadcast
-                mainActivity.showBroadcastMessage(receivedMessage);
-            } else {
-                if (!lostMessages.contains(receivedMessage)) {
-                    lostMessages.add(receivedMessage);
-                }
-            }
-        }
+    public void responseFromClient(String endPointId, Payload payload) {
+//        Message receivedMessage = MessageConverter.getMessage(payload.asBytes());
+//        if (receivedMessage.getState() == Message.State.EMPTY_MESSAGE) return;
+//
+//
+//        //Проверяем это Новое сообщение, или ответ о доставленном сообщении
+//        if (receivedMessage.getState() == Message.State.DELIVERED_MESSAGE) {
+//            lostMessages.remove(receivedMessage.getDeliveredMessage());
+//            deliveredLostMessages.add(receivedMessage.getDeliveredMessage());
+//        } else {
+//            //Работаем с обычным типом сообщения
+//            //Определим, это совершенно новое сообщение, или это сообщение мы уже кому-то доставили
+//            for (Message message : deliveredLostMessages) {
+//                if (deliveredLostMessages.contains(receivedMessage)) {
+//                    //даем ответ отправителю, что такое сообщение уже отправлено, и следует прекратить транслировать его
+//                    deliverTargetMessage(
+//                            Message.deliveredMessage(endPointId, message));
+//                    return; //Нам не имеет смысла обрабатывать это сообщение, мы его уже доставили
+//                }
+//            }
+//
+//            String targetId = receivedMessage.getTargetId();
+//            String targetName = receivedMessage.getTargetName();
+//
+//            //Иначе это Broadcast
+//            if (targetId != null && targetId.equals(myDevice.getClientNearbyKey())
+//                    || (targetName != null && targetName.equals(myDevice.getClientName()))) {
+////                if (targetId.equals(myDevice.getClientNearbyKey()) ||
+////                        targetName.equals(myDevice.getClientName())) {
+//                //Если у нас сменился Id, то сообщение доставить нам можно только по нашему имени,
+//                //если это произошло, то отправляем сообщение, что не нужно нас искать
+//
+//                //Если сообщение нам
+//                mainActivity.showMessageForMe(receivedMessage);
+//
+//                //Сообщаем, что получили сообщение
+//                deliverTargetMessage(
+//                        Message.deliveredMessage(endPointId, receivedMessage));
+//
+//            } else if (targetId == null && targetName == null) {
+//                //Если target == null, значит это Broadcast
+//                mainActivity.showBroadcastMessage(receivedMessage);
+//            } else {
+//                if (!lostMessages.contains(receivedMessage)) {
+//                    lostMessages.add(receivedMessage);
+//                }
+//            }
+//        }
     }
 
     public void saveConnectedDevice(DeviceInfo device) {
@@ -486,80 +482,79 @@ public class MainPresenter {
 
 
     public void sendLostMessage() throws IOException {
-        mainActivity.debugLog(String.format("Timer! Lost: %s, Deliver: %s", lostMessages.size(), deliveredLostMessages.size()));
-
-        //Защита, если мы еще не успели всем передать сообщение, а уже сработало событие
-        if (sendingLostMessageComplete) {   //Lock.class ??
-            sendingLostMessageComplete = false;
-            broadCastBanList.clear();
-
-            if (!lostMessages.isEmpty()) {
-                Message[] messages = new Message[lostMessages.size()];
-                messages = lostMessages.toArray(messages);
-
-                for (Message message : messages) {
-                    for (DeviceInfo client : connectedClients) {
-                        //Проверяем, пытались ли мы уже отправлять сообщение данному клиенту
-                        if (broadCastBanList.get(message) == null ||
-                                !broadCastBanList.get(message).contains(client)) {
-                            //Проверяем, это тот клиент который нам нужен
-                            if ((message.getTargetId() != null && message.getTargetId().equals(client.getClientNearbyKey())) ||
-                                    (message.getTargetName() != null && message.getTargetName().equals(client.getClientName()))) {
-
-                                //Доставили получателю
-                                deliverTargetMessage(message);
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-
-            sendingLostMessageComplete = true;
-        }
+//        .debugLog(String.format("Timer! Lost: %s, Deliver: %s", lostMessages.size(), deliveredLostMessages.size()));
+//
+//        //Защита, если мы еще не успели всем передать сообщение, а уже сработало событие
+//        if (sendingLostMessageComplete) {   //Lock.class ??
+//            sendingLostMessageComplete = false;
+//            broadCastBanList.clear();
+//
+//            if (!lostMessages.isEmpty()) {
+//                Message[] messages = new Message[lostMessages.size()];
+//                messages = lostMessages.toArray(messages);
+//
+//                for (Message message : messages) {
+//                    for (DeviceInfo client : connectedClients) {
+//                        //Проверяем, пытались ли мы уже отправлять сообщение данному клиенту
+//                        if (broadCastBanList.get(message) == null ||
+//                                !broadCastBanList.get(message).contains(client)) {
+//                            //Проверяем, это тот клиент который нам нужен
+//                            if ((message.getTargetId() != null && message.getTargetId().equals(client.getClientNearbyKey())) ||
+//                                    (message.getTargetName() != null && message.getTargetName().equals(client.getClientName()))) {
+//
+//                                //Доставили получателю
+//                                deliverTargetMessage(message);
+//                                break;
+//                            }
+//                        }
+//                    }
+//                }
+//            }
+//
+//            sendingLostMessageComplete = true;
+//        }
     }
 
     public void deliverTargetMessage(Message message) {
-        mainActivity.debugLog("Send target: " + message.getTargetId());
-
-        Nearby.Connections.sendPayload(
-                App.googleApiClient(),
-                message.getTargetId(),
-                Payload.fromBytes(
-                        MessageConverter.toBytes(message)))
-                .setResultCallback(status -> {
-                    if (status.isSuccess()) {
-                        mainActivity.debugLog("Send OK!!");
-
-                        messageDelivered(message);
-                    } else {
-                        mainActivity.debugLog("Send FAIL!!" + status.getStatus());
-
-                        //Получатель не найден или не удалось доставить
-                        failDelivered(message);
-                    }
-                });
+//        mainActivity.debugLog("Send target: " + message.getTargetId());
+//
+//        Nearby.Connections.sendPayload(
+//                App.googleApiClient(),
+//                message.getTargetId(),
+//                Payload.fromBytes(
+//                        MessageConverter.toBytes(message)))
+//                .setResultCallback(status -> {
+//                    if (status.isSuccess()) {
+//                        mainActivity.debugLog("Send OK!!");
+//
+//                        messageDelivered(message);
+//                    } else {
+//                        mainActivity.debugLog("Send FAIL!!" + status.getStatus());
+//
+//                        //Получатель не найден или не удалось доставить
+//                        failDelivered(message);
+//                    }
+//                });
     }
 
-    public void acceptConnection(String endPointId, PayloadCallback payloadCallback, ResultCallback<? super Status> resultCallback) {
-        Nearby.Connections.acceptConnection(
-                App.googleApiClient(),
-                endPointId,
-                payloadCallback)
-                .setResultCallback(resultCallback);
-    }
+//    public void acceptConnection(String endPointId, PayloadCallback payloadCallback, ResultCallback<? super Status> resultCallback) {
+//        Nearby.Connections.acceptConnection(
+//                App.googleApiClient(),
+//                endPointId,
+//                payloadCallback)
+//                .setResultCallback(resultCallback);
+//    }
 
     private List<String> createClientsEndPoints(Set<DeviceInfo> clients, String fromName) {
-        List<String> allEndPoints = new ArrayList<>();
-        for (DeviceInfo endPoint : clients) {
-            //Сообщение не нужно передавать назад отправителю
-            if (!endPoint.getClientName().equals(fromName)) {
-                allEndPoints.add(endPoint.getClientNearbyKey());
-            }
-        }
-        return allEndPoints;
+//        List<String> allEndPoints = new ArrayList<>();
+//        for (DeviceInfo endPoint : clients) {
+//            //Сообщение не нужно передавать назад отправителю
+//            if (!endPoint.getClientName().equals(fromName)) {
+//                allEndPoints.add(endPoint.getClientNearbyKey());
+//            }
+//        }
+//        return allEndPoints;
     }
-
 
 
 //    public GoogleApiClient getGoogleApiClient() {

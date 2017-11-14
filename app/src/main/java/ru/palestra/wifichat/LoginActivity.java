@@ -20,34 +20,14 @@ import ru.palestra.wifichat.services.SharedPrefServiceImpl;
  */
 
 public class LoginActivity extends AppCompatActivity {
-    private final SharedPrefServiceImpl sharedPrefService = new SharedPrefServiceImpl(this);
-
     private Button login;
     private EditText userNickname;
 
     private DeviceInfo myDevice;
 
-    private TextToSpeech mTextToSpeech;
-    private boolean mIsInit;
-
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
-        mTextToSpeech = new TextToSpeech(this, i -> {
-            if (i == TextToSpeech.SUCCESS) {
-                Locale locale = new Locale("ru_RU");
-                int result = mTextToSpeech.setLanguage(locale);
-                if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                    mIsInit = false;
-                } else {
-                    mIsInit = true;
-                }
-            } else {
-                mIsInit = false;
-            }
-        });
-
-
-        myDevice = sharedPrefService.getInfoAboutMyDevice();
+        myDevice = App.sharedPreference().getInfoAboutMyDevice();
 
         if (myDevice.getState() == DeviceInfo.State.MY_DEVICE) {
             gotoMainActivity();
@@ -64,13 +44,9 @@ public class LoginActivity extends AppCompatActivity {
                             userNickname.getText().toString(),
                             UUID.randomUUID().toString());
 
-                    sharedPrefService.saveInfoAboutMyDevice(myDevice);
+                    App.sharedPreference().saveInfoAboutMyDevice(myDevice);
 
                     gotoMainActivity();
-
-//                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-//                        mTextToSpeech.speak("Привет", TextToSpeech.QUEUE_FLUSH, null, "id1");
-//                    }
                 }
         );
     }

@@ -28,20 +28,14 @@ public class ClientsAdapter extends RecyclerView.Adapter<ClientsAdapter.ViewHold
     private MainActivity.ItemClick listener;
 
     public void setClient(DeviceInfo client) {
-        DeviceInfo[] devicesInfo = new DeviceInfo[clients.size()];
-        devicesInfo = clients.toArray(devicesInfo);
-
-        //Удаляем дубликаты клиентов с неверными точками доступа
-        for (int i = 0; i < devicesInfo.length; i++) {
-            if (devicesInfo[i].getClientName().equals(client.getClientName())
-                    || devicesInfo[i].getClientNearbyKey().equals(client.getClientNearbyKey())) {
-                clients.remove(devicesInfo[i]);
-                notifyItemRemoved(i);
-            }
-        }
+        if (!isNewClient(client)) return;
 
         clients.add(client);
         notifyDataSetChanged();
+    }
+
+    private boolean isNewClient(DeviceInfo client) {
+        return !clients.contains(client);
     }
 
     public void setAllClients(Set<DeviceInfo> clients) {
@@ -50,10 +44,16 @@ public class ClientsAdapter extends RecyclerView.Adapter<ClientsAdapter.ViewHold
         notifyDataSetChanged();
     }
 
-    public void removeClient(DeviceInfo device) {
-        if (device.getState() != DeviceInfo.State.EMPTY) {
-            clients.remove(device);
+    public void removeClient(String idEndPoint) {
+        clients.remove(
+                searchDisconnectedClient(idEndPoint));
+    }
+
+    private DeviceInfo searchDisconnectedClient(String idEndPoint) {
+        for (DeviceInfo client : clients) {
+            if (client.getClientNearbyKey().equals(idEndPoint)) return client;
         }
+        return DeviceInfo.empty();
     }
 
     public void clearAll() {

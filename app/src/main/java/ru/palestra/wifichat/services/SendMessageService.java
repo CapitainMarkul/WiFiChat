@@ -20,16 +20,13 @@ import com.google.android.gms.nearby.connection.PayloadTransferUpdate;
 
 import org.threeten.bp.Clock;
 import org.threeten.bp.LocalDateTime;
-import org.threeten.bp.ZoneOffset;
 import org.threeten.bp.temporal.ChronoUnit;
-import org.threeten.bp.temporal.TemporalField;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.Timer;
@@ -40,14 +37,15 @@ import ru.palestra.wifichat.App;
 import ru.palestra.wifichat.MessageConverter;
 import ru.palestra.wifichat.model.DeviceInfo;
 import ru.palestra.wifichat.model.Message;
+import ru.palestra.wifichat.utils.ConfigIntent;
 import ru.palestra.wifichat.utils.Logger;
 
 /**
  * Created by da.pavlov1 on 09.11.2017.
  */
 
-public class SendLostMessageService extends Service {
-    private static final String TAG = SendLostMessageService.class.getSimpleName() + "_SERVICE";
+public class SendMessageService extends Service {
+    private static final String TAG = SendMessageService.class.getSimpleName() + "_SERVICE";
 
     private static final int MSG_START_CONNECT_TO_CLIENTS = 1001;
 
@@ -60,6 +58,7 @@ public class SendLostMessageService extends Service {
     private ServiceTimer mServiceTimer;
 
     private boolean sendingLostMessageComplete = true;
+    private boolean sendingDeliveredMessageComplete = true;
 
     private List<DeviceInfo> connectedClients;
 
@@ -72,6 +71,8 @@ public class SendLostMessageService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        Logger.debugLog("Start: SendMessageService");
+
         myDeviceName = App.sharedPreference().getInfoAboutMyDevice().getClientName();
         connectedClients = new ArrayList<>();
 
@@ -80,6 +81,8 @@ public class SendLostMessageService extends Service {
 
         mServiceLooper = thread.getLooper();
         mServiceHandler = new ServiceHandler(mServiceLooper);
+
+        mServiceHandler.sendEmptyMessage(MSG_START_CONNECT_TO_CLIENTS);
     }
 
     @Override
@@ -93,6 +96,18 @@ public class SendLostMessageService extends Service {
         return null;
     }
 
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent.getExtras() != null) {
+            Message msgFromMe =
+                    (Message) intent.getSerializableExtra(ConfigIntent.MESSAGE);
+
+            sendTargetMessage(msgFromMe);
+        }
+
+        return super.onStartCommand(intent, flags, startId);
+    }
+
     private final class ServiceHandler extends Handler {
 
         ServiceHandler(Looper looper) {
@@ -103,10 +118,13 @@ public class SendLostMessageService extends Service {
         public void handleMessage(android.os.Message msg) {
             switch (msg.what) {
                 case MSG_START_CONNECT_TO_CLIENTS:
+                    Logger.debugLog(String.format("Lost: %s, Deliver: %s", lostMessages.size(), deliveredLostMessages.size()));
+
                     runRequestedConnection();
 
                     sendLostMessage();
                     sendDeliveredMessage();
+
                     break;
                 default:
                     break;
@@ -168,9 +186,6 @@ public class SendLostMessageService extends Service {
     }
 
     private void requestConnection(DeviceInfo potentialClient) {
-        // TODO: 14.11.2017 Nearby, в коллбеке если получилось добавить удаляем, если не получилось по причине неверной,
-        //очки доступа - удаляем
-
         Nearby.Connections.requestConnection(
                 App.googleApiClient(),
                 myDeviceName,
@@ -180,10 +195,6 @@ public class SendLostMessageService extends Service {
             if (status.isSuccess()) {
                 connectedClients.add(potentialClient);
                 App.sharedPreference().removePotentialClient(potentialClient);
-
-                if (lostMessage != null) {
-                    deliverTargetMessage(lostMessage);
-                }
             } else {
                 //Мертвые точки
                 if (status.getStatus().toString().contains("STATUS_ENDPOINT_UNKNOWN")) {
@@ -227,6 +238,12 @@ public class SendLostMessageService extends Service {
         for (DeviceInfo connectedClient : connectedClientsArray) {
             if (connectedClient.getClientNearbyKey().equals(idEndPoint)) {
                 connectedClients.remove(connectedClient);
+
+                sendBroadcast(new Intent(ConfigIntent.ACTION_CONNECTION_INITIATED)
+                        .putExtra(ConfigIntent.CONNECTION_TARGET_ID, idEndPoint)
+                        .putExtra(ConfigIntent.CONNECTION_FOOTER_TEXT, createFooterText())
+                        .putExtra(ConfigIntent.CONNECTION_TARGET_IS_DISCONNECT, true));
+
                 break;
             }
         }
@@ -239,9 +256,17 @@ public class SendLostMessageService extends Service {
                 messageListener
         ).setResultCallback(status -> {
             if (status.isSuccess()) {
+
+                Logger.debugLog(String.format("Connected to: %s:%s", nameEndPoint, idEndPoint));
                 //Соединение установленно
                 connectedClients.add(
                         DeviceInfo.otherDevice(nameEndPoint, idEndPoint, null));
+
+                sendBroadcast(new Intent(ConfigIntent.ACTION_CONNECTION_INITIATED)
+                        .putExtra(ConfigIntent.CONNECTION_TARGET_ID, idEndPoint)
+                        .putExtra(ConfigIntent.CONNECTION_TARGET_NAME, nameEndPoint)
+                        .putExtra(ConfigIntent.CONNECTION_FOOTER_TEXT, createFooterText())
+                        .putExtra(ConfigIntent.CONNECTION_TARGET_IS_DISCONNECT, false));
             } else {
                 //Соединение не удалось
                 // TODO: 14.11.2017 Действовать в соответствии с кодом ошибки
@@ -265,8 +290,6 @@ public class SendLostMessageService extends Service {
     };
 
     private void responseFromClient(String idEndPoint, Message message) {
-        // TODO: 14.11.2017 Продумать работу с сообщениями (Потерянные и доставленные будут рассылаться) Живут 2 минуты
-
         //Проверяем это Новое сообщение, или ответ о доставленном сообщении
         if (message.getState() == Message.State.DELIVERED_MESSAGE) {
             Message deliveredMessage = message.getDeliveredMessage();
@@ -282,7 +305,7 @@ public class SendLostMessageService extends Service {
             if (deliveredLostMessages.contains(message)) {
                 //даем ответ, что такое сообщение уже отправлено, и следует прекратить транслировать его
                 sendBroadcastMessage(
-                        Message.deliveredMessage(message));
+                        Message.deliveredMessage(message), idEndPoint);
                 return; //Нам не имеет смысла обрабатывать это сообщение, мы его уже доставили
             }
 //            }
@@ -292,21 +315,23 @@ public class SendLostMessageService extends Service {
 
 
             if ((targetName != null && targetName.equals(myDeviceName)))
-//                    || targetId != null && targetId.equals(myDevice.getClientNearbyKey())) Fixme Мы не знаем нах Id (
+//                    || targetId != null && targetId.equals(myDevice.getClientNearbyKey())) Fixme Мы не знаем наш Id (
             {
                 //Если у нас сменился Id, то сообщение доставить нам можно только по нашему имени,
                 //если это произошло, то отправляем сообщение, что не нужно нас искать
 
                 //Если сообщение нам
                 // TODO: 14.11.2017 Save Message, Update Ui
-                mainActivity.showMessageForMe(message);
+//                mainActivity.showMessageForMe(message);
 
                 //Сообщаем, что получили сообщение
-                deliverTargetMessage(
-                        Message.deliveredMessage(endPointId, message));
+                deliveredLostMessages.add(message);
+//                deliverTargetMessage(
+//                        Message.deliveredMessage(endPointId, message));
             } else if (targetId == null && targetName == null) {
+                // TODO: 14.11.2017 Save Message, Update Ui. Проверить, есть ли сейчас Broadcast без конечной цели (Вроде нет)
                 //Если target == null, значит это Broadcast
-                mainActivity.showBroadcastMessage(message);
+//                mainActivity.showBroadcastMessage(message);
             } else {
                 if (!lostMessages.contains(message)) {
                     lostMessages.add(message);
@@ -316,14 +341,12 @@ public class SendLostMessageService extends Service {
     }
 
     private void sendLostMessage() {
-        Logger.debugLog(String.format("Timer! Lost: %s, Deliver: %s", lostMessages.size(), deliveredLostMessages.size()));
-
         //Защита, если мы еще не успели всем передать сообщение, а уже сработало событие
         if (sendingLostMessageComplete) {   //Lock.class ??
             sendingLostMessageComplete = false;
 
             if (!lostMessages.isEmpty()) {
-                for (Message message : createValidLostMessage()) {
+                for (Message message : createValidMessage(lostMessages)) {
                     for (DeviceInfo client : connectedClients) {
                         //Отправляем всем
                         sendBroadcastMessage(message, client.getClientNearbyKey());
@@ -335,16 +358,34 @@ public class SendLostMessageService extends Service {
         }
     }
 
-    private List<Message> createValidLostMessage() {
+    private void sendDeliveredMessage() {
+        //Защита, если мы еще не успели всем передать сообщение, а уже сработало событие
+        if (sendingDeliveredMessageComplete) {   //Lock.class ??
+            sendingDeliveredMessageComplete = false;
+
+            if (!deliveredLostMessages.isEmpty()) {
+                for (Message message : createValidMessage(deliveredLostMessages)) {
+                    for (DeviceInfo client : connectedClients) {
+                        //Отправляем всем
+                        sendBroadcastMessage(message, client.getClientNearbyKey());
+                    }
+                }
+            }
+
+            sendingDeliveredMessageComplete = true;
+        }
+    }
+
+    private List<Message> createValidMessage(List<Message> messages) {
         List<Message> validMessages = new ArrayList<>();
 
-        Message[] oldMessages = new Message[lostMessages.size()];
-        oldMessages = lostMessages.toArray(oldMessages);
+        Message[] oldMessages = new Message[messages.size()];
+        oldMessages = messages.toArray(oldMessages);
 
         for (Message message : oldMessages) {
             //Удаляются сообщения старше 2 минут
             if (ChronoUnit.MINUTES.between(message.getTimeSend(), LocalDateTime.now(Clock.systemDefaultZone())) > 2) {
-                lostMessages.remove(message);
+                messages.remove(message);
                 continue;
             }
 
@@ -371,7 +412,7 @@ public class SendLostMessageService extends Service {
                             // TODO: 14.11.2017 Update Ui
                             //Если точка изменилась, делаем из сообщения Бродкаст
                             lostMessages.add(
-                                    Message.broadcastMessage(message.getFrom(), message.getTargetName()), message.getText(), message.getUUID());
+                                    Message.broadcastMessage(message.getFrom(), message.getTargetName(), message.getText(), message.getUUID()));
                         } else {
                             lostMessages.add(message);
                         }
@@ -388,9 +429,12 @@ public class SendLostMessageService extends Service {
     }
 
     private void sendBroadcastMessage(Message message, String idEndPoint) {
+        List<String> receivers = createListReceiversMessage(message, idEndPoint);
+        if (receivers.isEmpty()) return;
+
         Nearby.Connections.sendPayload(
                 App.googleApiClient(),
-                createListReceiversMessage(message, idEndPoint),
+                receivers,
                 Payload.fromBytes(
                         MessageConverter.toBytes(message)))
                 .setResultCallback(status -> {
@@ -433,5 +477,17 @@ public class SendLostMessageService extends Service {
             }
         }
         return validEndPoints;
+    }
+
+    public String createFooterText() {
+        String textClients = "";
+        if (!connectedClients.isEmpty()) {
+            for (DeviceInfo client : connectedClients) {
+                textClients += client.getClientName() + ", ";
+            }
+            return textClients;
+        } else {
+            return "PEEK";
+        }
     }
 }

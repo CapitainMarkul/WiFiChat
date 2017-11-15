@@ -53,8 +53,7 @@ public class MainPresenter {
 
     private MainActivity.StatusRequestConnectionListener statusRequestConnectionListener;
 
-    public MainPresenter(MainActivity mainActivity,
-                         MainActivity.StatusRequestConnectionListener statusRequestConnectionListener) {
+    public MainPresenter(MainActivity mainActivity) {
         this.mainActivity = mainActivity;
         this.statusRequestConnectionListener = statusRequestConnectionListener;
 
@@ -255,14 +254,14 @@ public class MainPresenter {
     }
 
 
-    public void lostEndPoint(String endPointId) {
-        //Потерявшиеся клиенты
-        DeviceInfo lostDevices = searchLostedDevice(endPointId);
-        if (lostDevices.getState() != DeviceInfo.State.EMPTY) {
-            potentialClients.remove(lostDevices);
-            mainActivity.removePotentialClient(lostDevices);
-        }
-    }
+//    public void lostEndPoint(String endPointId) {
+//        //Потерявшиеся клиенты
+//        DeviceInfo lostDevices = searchLostedDevice(endPointId);
+//        if (lostDevices.getState() != DeviceInfo.State.EMPTY) {
+//            potentialClients.remove(lostDevices);
+//            mainActivity.removePotentialClient(lostDevices);
+//        }
+//    }
 
     public void messageDelivered(Message message) {
         deliveredLostMessages.add(message);
@@ -277,35 +276,35 @@ public class MainPresenter {
     }
 
     private void sendBroadcastMessage(Message message) {
-        mainActivity.debugLog("Send broadcast message");
-
-        Nearby.Connections.sendPayload(
-                App.googleApiClient(),
-                createClientsEndPoints(connectedClients, message.getFrom()),
-                Payload.fromBytes(
-                        MessageConverter.toBytes(message)))
-                .setResultCallback(status -> {
-                    if (status.isSuccess()) {
-                        mainActivity.debugLog("Send OK!!");
-
-                        if (message.getFrom().equals(myDevice.getClientName())) {
-                            mainActivity.showMyMessage(message);
-                        }
-                    } else {
-                        mainActivity.debugLog("Send FAIL!!" + status.getStatus());
-
-                        //Если мы не можем найти пользователя с указанным Id,
-                        //посылаем сообщение через рассылку, сохраняем только имя получателя
-                        if (status.getStatus().toString().contains("STATUS_ENDPOINT_UNKNOWN")) {
-                            lostMessages.add(
-                                    Message.broadcastMessage(message.getFrom(), message.getTargetName(), message.getText()));
-
-                            disconnectedDevice(message.getTargetId());
-                        } else {
-                            lostMessages.add(message);
-                        }
-                    }
-                });
+//        mainActivity.debugLog("Send broadcast message");
+//
+//        Nearby.Connections.sendPayload(
+//                App.googleApiClient(),
+//                createClientsEndPoints(connectedClients, message.getFrom()),
+//                Payload.fromBytes(
+//                        MessageConverter.toBytes(message)))
+//                .setResultCallback(status -> {
+//                    if (status.isSuccess()) {
+//                        mainActivity.debugLog("Send OK!!");
+//
+//                        if (message.getFrom().equals(myDevice.getClientName())) {
+//                            mainActivity.showMyMessage(message);
+//                        }
+//                    } else {
+//                        mainActivity.debugLog("Send FAIL!!" + status.getStatus());
+//
+//                        //Если мы не можем найти пользователя с указанным Id,
+//                        //посылаем сообщение через рассылку, сохраняем только имя получателя
+//                        if (status.getStatus().toString().contains("STATUS_ENDPOINT_UNKNOWN")) {
+//                            lostMessages.add(
+//                                    Message.broadcastMessage(message.getFrom(), message.getTargetName(), message.getText()));
+//
+//                            disconnectedDevice(message.getTargetId());
+//                        } else {
+//                            lostMessages.add(message);
+//                        }
+//                    }
+//                });
     }
 
     public void responseFromClient(String endPointId, Payload payload) {
@@ -435,43 +434,43 @@ public class MainPresenter {
     }
 
     public void foundNewDevice(DeviceInfo deviceInfo) {
-        ConnectionLifecycleCallback temp = new ConnectionLifecycleCallback() {
-            @Override
-            public void onConnectionInitiated(String s, ConnectionInfo connectionInfo) {
-
-            }
-
-            @Override
-            public void onConnectionResult(String s, ConnectionResolution result) {
-                switch (result.getStatus().getStatusCode()) {
-                    case ConnectionsStatusCodes.STATUS_OK:
-                        Logger.debugLog("Connect: OK");
-                        break;
-                    case ConnectionsStatusCodes.STATUS_CONNECTION_REJECTED:
-                        Logger.errorLog("Connect: FAIL" + result.getStatus());
-                        break;
-                }
-            }
-
-            @Override
-            public void onDisconnected(String s) {
-
-            }
-        };
-
-        // После нахождения нового устройства проверяем, ему ли предназначалось сообщение
-        for (Message message : lostMessages) {
-            //Мы только что нашли того, кого искали. Немедленно коннектимся к нему
-            if ((message.getTargetId() != null && message.getTargetId().equals(deviceInfo.getClientNearbyKey())) ||
-                    (message.getTargetName() != null && message.getTargetName().equals(deviceInfo.getClientName()))) {
-                //Можно попробовать, остановить discover, становить соединение, передать сообщение
-                // и снова начать discover
-                requestConnection(deviceInfo, message,
-                        temp, statusRequestConnectionListener);
-
-                // TODO: 13.11.2017  connectionLifecycleCallback -> он в Сервисе
-            }
-        }
+//        ConnectionLifecycleCallback temp = new ConnectionLifecycleCallback() {
+//            @Override
+//            public void onConnectionInitiated(String s, ConnectionInfo connectionInfo) {
+//
+//            }
+//
+//            @Override
+//            public void onConnectionResult(String s, ConnectionResolution result) {
+//                switch (result.getStatus().getStatusCode()) {
+//                    case ConnectionsStatusCodes.STATUS_OK:
+//                        Logger.debugLog("Connect: OK");
+//                        break;
+//                    case ConnectionsStatusCodes.STATUS_CONNECTION_REJECTED:
+//                        Logger.errorLog("Connect: FAIL" + result.getStatus());
+//                        break;
+//                }
+//            }
+//
+//            @Override
+//            public void onDisconnected(String s) {
+//
+//            }
+//        };
+//
+//        // После нахождения нового устройства проверяем, ему ли предназначалось сообщение
+//        for (Message message : lostMessages) {
+//            //Мы только что нашли того, кого искали. Немедленно коннектимся к нему
+//            if ((message.getTargetId() != null && message.getTargetId().equals(deviceInfo.getClientNearbyKey())) ||
+//                    (message.getTargetName() != null && message.getTargetName().equals(deviceInfo.getClientName()))) {
+//                //Можно попробовать, остановить discover, становить соединение, передать сообщение
+//                // и снова начать discover
+//                requestConnection(deviceInfo, message,
+//                        temp, statusRequestConnectionListener);
+//
+//                // TODO: 13.11.2017  connectionLifecycleCallback -> он в Сервисе
+//            }
+//        }
 
 //        try {
 //            sendLostMessage();  // TODO: 13.11.2017 Проверить
@@ -545,7 +544,7 @@ public class MainPresenter {
 //                .setResultCallback(resultCallback);
 //    }
 
-    private List<String> createClientsEndPoints(Set<DeviceInfo> clients, String fromName) {
+//    private List<String> createClientsEndPoints(Set<DeviceInfo> clients, String fromName) {
 //        List<String> allEndPoints = new ArrayList<>();
 //        for (DeviceInfo endPoint : clients) {
 //            //Сообщение не нужно передавать назад отправителю
@@ -554,7 +553,7 @@ public class MainPresenter {
 //            }
 //        }
 //        return allEndPoints;
-    }
+//    }
 
 
 //    public GoogleApiClient getGoogleApiClient() {

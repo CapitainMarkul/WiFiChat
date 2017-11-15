@@ -29,7 +29,6 @@ import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
-import java.io.IOException;
 import java.util.Set;
 
 import ru.palestra.wifichat.adapters.ClientsAdapter;
@@ -38,9 +37,8 @@ import ru.palestra.wifichat.model.DeviceInfo;
 import ru.palestra.wifichat.model.EndPoint;
 import ru.palestra.wifichat.model.Message;
 import ru.palestra.wifichat.services.ConnectToClientsService;
-import ru.palestra.wifichat.services.SendLostMessageService;
+import ru.palestra.wifichat.services.SendMessageService;
 import ru.palestra.wifichat.utils.ConfigIntent;
-import ru.palestra.wifichat.utils.Logger;
 
 public class MainActivity extends AppCompatActivity {
     private final static String TAG = MainActivity.class.getSimpleName();
@@ -59,13 +57,19 @@ public class MainActivity extends AppCompatActivity {
     private Button startAdventuring;
     private EditText textMessage;
 
+    private String targetId;
+    private String targetName;
+    private String myDeviceName;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        mainPresenter = new MainPresenter(this, statusRequestConnectionListener);
-        setTitle(mainPresenter.getDeviceName());
+        mainPresenter = new MainPresenter(this);
+
+        myDeviceName = App.sharedPreference().getInfoAboutMyDevice().getClientName();
+        setTitle(myDeviceName);
 
         checkPermition();
 //        createGoogleApiClient();
@@ -73,9 +77,8 @@ public class MainActivity extends AppCompatActivity {
         setupClientsRecyclerView();
         setupMessagesRecyclerView();
 
-        registerReceiver(sendLostMessagesReceiver, new IntentFilter(ConfigIntent.ACTION_SEND_LOST_MESSAGE));
-//        registerReceiver(connectToClientsReceiver, new IntentFilter(ConfigIntent.ACTION_CONNECT_TO_CLIENTS));
-        registerReceiver(connectionLifecycleReceiver, new IntentFilter(ConfigIntent.ACTION_CONNECTION_INITIATED));
+        registerReceiver(searchClientReceiver, new IntentFilter(ConfigIntent.ACTION_SEARCH_CLIENT));
+        registerReceiver(acceptConnectionToClientReceiver, new IntentFilter(ConfigIntent.ACTION_CONNECTION_INITIATED));
 
         footer = findViewById(R.id.txt_peek);
         defaultOption = findViewById(R.id.btn_default_option);
@@ -93,8 +96,16 @@ public class MainActivity extends AppCompatActivity {
         /** SendMessage */
         sendMessage.setOnClickListener(view -> {
             //send Current Message
-            mainPresenter.sendMessage(
-                    textMessage.getText().toString());
+
+
+            startService(
+                    new Intent(this, SendMessageService.class)
+                            .putExtra(ConfigIntent.MESSAGE,
+                                    Message.newMessage(myDeviceName, targetId, targetName, textMessage.getText().toString())));
+
+            textMessage.setText("");
+//            mainPresenter.sendMessage(
+//                    textMessage.getText().toString());
         });
 
         /** Start advertising */
@@ -120,69 +131,55 @@ public class MainActivity extends AppCompatActivity {
 
     private void startServices() {
         startService(new Intent(this, ConnectToClientsService.class));
-        startService(new Intent(this, SendLostMessageService.class));
+        startService(new Intent(this, SendMessageService.class));
     }
 
     private void stopServices() {
         // FIXME: 13.11.2017 Падает, если мы вышли, но был запланирован AlarmMAnager. (GoogleApiClient not init)
-        stopService(new Intent(this, SendLostMessageService.class));
+        stopService(new Intent(this, SendMessageService.class));
         stopService(new Intent(this, ConnectToClientsService.class));
     }
 
-    BroadcastReceiver sendLostMessagesReceiver = new BroadcastReceiver() {
+    BroadcastReceiver searchClientReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            try {
-                mainPresenter.sendLostMessage();
-            } catch (IOException e) {
-                e.printStackTrace();
+            String idEndPoint = intent.getStringExtra(ConfigIntent.DISCOVERY_TARGET_ID);
+            String nameEndPoint = intent.getStringExtra(ConfigIntent.DISCOVERY_TARGET_NAME);
+            boolean isLost = intent.getBooleanExtra(ConfigIntent.DISCOVERY_TARGET_IS_LOST, true);
+
+            if (isLost) {
+                clientsAdapter.removeClient(idEndPoint);
+            } else {
+                clientsAdapter.setClient(
+                        DeviceInfo.otherDevice(nameEndPoint, idEndPoint, null));
             }
         }
     };
 
-    BroadcastReceiver connectionLifecycleReceiver = new BroadcastReceiver() {
+    BroadcastReceiver acceptConnectionToClientReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            boolean isDisconnect = intent.getBooleanExtra("isDisconnect", false);
+            String idEndPoint = intent.getStringExtra(ConfigIntent.CONNECTION_TARGET_ID);
+            String nameEndPoint = intent.getStringExtra(ConfigIntent.CONNECTION_TARGET_NAME);
+            String footerText = intent.getStringExtra(ConfigIntent.CONNECTION_FOOTER_TEXT);
+            boolean isDisconnect = intent.getBooleanExtra(ConfigIntent.CONNECTION_TARGET_IS_DISCONNECT, true);
 
-            if(!isDisconnect) {
-                String idEndPoint = intent.getStringExtra("idEndPoint");
-                String nameEndPoint = intent.getStringExtra("nameEndPoint");
-
-                // Automatically accept the connection on both sides.
-                // FIXME: 13.11.2017 Проблема, с переносом в Сервис
-                mainPresenter.acceptConnection(idEndPoint, payloadCallback,
-                        status -> {
-                            if (status.isSuccess()) {
-                                Logger.debugLog("onConnectionInitiated: OK!!!");
-
-                                DeviceInfo temp =
-                                        mainPresenter.checkNewClient(idEndPoint, nameEndPoint);
-
-                                if (temp.getState() != DeviceInfo.State.EMPTY) {
-                                    mainPresenter.removePotentialClient(temp);
-                                    mainPresenter.saveConnectedDevice(temp);
-
-                                    clientsAdapter.setClient(temp);
-                                    updateFooterText();
-                                }
-                            }
-                        });
+            if (isDisconnect) {
+                clientsAdapter.removeClient(idEndPoint);
+                footer.setText(footerText);
             } else {
-                String idEndPoint = intent.getStringExtra("idEndPoint");
-
-                DeviceInfo disconnectedDevice =
-                        mainPresenter.searchDisconnectedDevice(idEndPoint);
-
-                if (disconnectedDevice.getState() != DeviceInfo.State.EMPTY) {
-                    Logger.debugLog("onDisconnected");
-
-                    mainPresenter.disconnectedDevice(idEndPoint);
-//                reconnectToClient(
-//                        mainPresenter.searchDisconnectedDevice(endPoint));
-                    updateFooterText();
-                }
+                footer.setText(footerText);
+                //todo Если подключили, то подкрасили его в списке
+                clientsAdapter.setClient(
+                        DeviceInfo.otherDevice(nameEndPoint, idEndPoint, null));
             }
+        }
+    };
+
+    BroadcastReceiver connectionClientReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+
         }
     };
 
@@ -229,7 +226,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
-        EventBus.getDefault().register(this);
+//        EventBus.getDefault().register(this);
 
 //        mainPresenter.getGoogleApiClient().connect();
 
@@ -240,30 +237,30 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStop() {
         super.onStop();
-        EventBus.getDefault().unregister(this);
+//        EventBus.getDefault().unregister(this);
 
         stopServices();
 
 //        if (mainPresenter.getGoogleApiClient() != null &&
 //                mainPresenter.getGoogleApiClient().isConnected()) {
 //            debugLog("GoogleClient is Stop");
-            clientsAdapter.clearAll();
-            footer.setText("PEEK");
+        clientsAdapter.clearAll();
+        footer.setText("PEEK");
 
 //            mainPresenter.getGoogleApiClient().disconnect();
     }
 
 
     //foundNewPoint/LostPoint
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    public void onEndPointEvent(EndPoint endPoint) {
-        if (endPoint.getState() == EndPoint.State.NEW_FOUND) {
-            mainPresenter.foundNewEndPoint(
-                    endPoint.getIdEndPoint(), endPoint.getNameEndPoint());
-        } else {
-            mainPresenter.lostEndPoint(endPoint.getIdEndPoint());
-        }
-    }
+//    @Subscribe(threadMode = ThreadMode.MAIN)
+//    public void onEndPointEvent(EndPoint endPoint) {
+//        if (endPoint.getState() == EndPoint.State.NEW_FOUND) {
+//            mainPresenter.foundNewEndPoint(
+//                    endPoint.getIdEndPoint(), endPoint.getNameEndPoint());
+//        } else {
+//            mainPresenter.lostEndPoint(endPoint.getIdEndPoint());
+//        }
+//    }
 
 
     /**
@@ -450,22 +447,22 @@ public class MainActivity extends AppCompatActivity {
         void onConnected(DeviceInfo client, Status status);
     }
 
-    private StatusRequestConnectionListener statusRequestConnectionListener = (client, status) -> {
-        if (status.isSuccess()) {
-            debugLog("We successfully requested a connection");
-
-            updateFooterText();
-        } else {
-            debugLog("Nearby Connections failed" + status.getStatus());
-// TODO: 13.11.2017 Здесь будет нерабочее. Оставить только выбор таргета
-            if (status.getStatus().toString().contains("STATUS_ENDPOINT_UNKNOWN")) {
-                mainPresenter.removePotentialClient(client);
-                removePotentialClient(client);
-            } else if (status.getStatus().toString().contains("STATUS_ALREADY_CONNECTED_TO_ENDPOINT")) {
-                mainPresenter.removePotentialClient(client);
-            }
-        }
-    };
+//    private StatusRequestConnectionListener statusRequestConnectionListener = (client, status) -> {
+//        if (status.isSuccess()) {
+//            debugLog("We successfully requested a connection");
+//
+//            updateFooterText();
+//        } else {
+//            debugLog("Nearby Connections failed" + status.getStatus());
+//// TODO: 13.11.2017 Здесь будет нерабочее. Оставить только выбор таргета
+//            if (status.getStatus().toString().contains("STATUS_ENDPOINT_UNKNOWN")) {
+//                mainPresenter.removePotentialClient(client);
+//                removePotentialClient(client);
+//            } else if (status.getStatus().toString().contains("STATUS_ALREADY_CONNECTED_TO_ENDPOINT")) {
+//                mainPresenter.removePotentialClient(client);
+//            }
+//        }
+//    };
 
     private ItemClick itemClickListener = (client, needRequestConnect) -> {
         if (needRequestConnect) {
@@ -476,14 +473,17 @@ public class MainActivity extends AppCompatActivity {
             debugLog(String.format("Current target: %s - %s",
                     client.getClientName(), client.getClientNearbyKey()));
 
-            mainPresenter.updateTargetDevice(
-                    client.getClientNearbyKey(), client.getClientName());
+            targetId = client.getClientNearbyKey();
+            targetName = client.getClientName();
+
+//            mainPresenter.updateTargetDevice(
+//                    client.getClientNearbyKey(), client.getClientName());
         }
     };
 
-    public void removePotentialClient(DeviceInfo device) {
-        clientsAdapter.removeClient(device);
-    }
+//    public void removePotentialClient(DeviceInfo device) {
+//        clientsAdapter.removeClient(device);
+//    }
 
     public void showMessageForMe(Message message) {
         messagesAdapter.setMessages(message);
@@ -577,7 +577,8 @@ public class MainActivity extends AppCompatActivity {
 //                textLog, Toast.LENGTH_SHORT).show();
     }
 
-    private void setupClientsRecyclerView() {
+    private void
+    setupClientsRecyclerView() {
         clientsRv = findViewById(R.id.rv_potential_client);
         clientsRv.setLayoutManager(
                 new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));

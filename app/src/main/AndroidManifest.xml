@@ -37,7 +37,7 @@
         </activity>
 
         <service
-            android:name=".services.SendLostMessageService"
+            android:name=".services.SendMessageService"
             android:enabled="true"
             android:permission="android.permission.INTERNET"/>
 

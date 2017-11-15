@@ -1,8 +1,5 @@
 package ru.palestra.wifichat.services;
 
-import android.app.AlarmManager;
-import android.app.IntentService;
-import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
 import android.os.Handler;
@@ -27,15 +24,12 @@ import com.google.android.gms.nearby.connection.DiscoveryOptions;
 import com.google.android.gms.nearby.connection.EndpointDiscoveryCallback;
 import com.google.android.gms.nearby.connection.Strategy;
 
-import org.greenrobot.eventbus.EventBus;
-
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
 
 import ru.palestra.wifichat.App;
 import ru.palestra.wifichat.model.DeviceInfo;
-import ru.palestra.wifichat.model.EndPoint;
 import ru.palestra.wifichat.utils.ConfigIntent;
 import ru.palestra.wifichat.utils.Logger;
 
@@ -43,6 +37,7 @@ import ru.palestra.wifichat.utils.Logger;
  * Created by da.pavlov1 on 13.11.2017.
  */
 
+// TODO: 15.11.2017 Объединить с сервисом сообщений, сделать правильное планирование и запуск задач
 public class ConnectToClientsService extends Service {
     private static final String TAG = ConnectToClientsService.class.getSimpleName() + "_SERVICE";
 
@@ -64,6 +59,7 @@ public class ConnectToClientsService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        Logger.debugLog("Start: ConnectToClientsService");
 
         myDeviceName = App.sharedPreference().getInfoAboutMyDevice().getClientName();
 
@@ -93,18 +89,6 @@ public class ConnectToClientsService extends Service {
     @Override
     public IBinder onBind(Intent intent) {
         return null;
-    }
-
-    private void runAlarm() {
-
-        Intent intent = new Intent(this, ConnectToClientsService.class);
-        intent.putExtra("disc", isDiscovering);
-
-        AlarmManager alarmManager = (AlarmManager) getSystemService(ALARM_SERVICE);
-        alarmManager.set(
-                AlarmManager.RTC_WAKEUP,
-                System.currentTimeMillis() + (isDiscovering ? 3000 : 10000),
-                PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_CANCEL_CURRENT));
     }
 
     private final class ServiceHandler extends Handler {
@@ -206,9 +190,10 @@ public class ConnectToClientsService extends Service {
         public void onConnectionInitiated(String endPoint, ConnectionInfo connectionInfo) {
             Logger.debugLog("onConnectionInitiated: START!");
             sendBroadcast(new Intent(ConfigIntent.ACTION_CONNECTION_INITIATED)
-                    .putExtra("idEndPoint", endPoint)
-                    .putExtra("nameEndPoint", connectionInfo.getEndpointName())
-                    .putExtra("isDisconnect", false));
+                    .putExtra(ConfigIntent.CONNECTION_TARGET_ID, endPoint)
+                    .putExtra(ConfigIntent.CONNECTION_TARGET_NAME, connectionInfo.getEndpointName())
+                    .putExtra(ConfigIntent.CONNECTION_FOOTER_TEXT, "Кто то пришел")
+                    .putExtra(ConfigIntent.CONNECTION_TARGET_IS_DISCONNECT, false));
         }
 
         @Override
@@ -226,8 +211,9 @@ public class ConnectToClientsService extends Service {
         @Override
         public void onDisconnected(String endPoint) {
             sendBroadcast(new Intent(ConfigIntent.ACTION_CONNECTION_INITIATED)
-                    .putExtra("idEndPoint", endPoint)
-                    .putExtra("isDisconnect", true));
+                    .putExtra(ConfigIntent.CONNECTION_TARGET_ID, endPoint)
+                    .putExtra(ConfigIntent.CONNECTION_FOOTER_TEXT, "Кто то пришел")
+                    .putExtra(ConfigIntent.CONNECTION_TARGET_IS_DISCONNECT, true));
         }
     };
 
@@ -266,30 +252,28 @@ public class ConnectToClientsService extends Service {
     private final EndpointDiscoveryCallback endpointDiscoveryCallback = new EndpointDiscoveryCallback() {
         @Override
         public void onEndpointFound(
-                String endPointId, DiscoveredEndpointInfo discoveredEndpointInfo) {
-            Logger.debugLog("Found new endpoint: " + endPointId);
+                String idEndPoint, DiscoveredEndpointInfo discoveredEndpointInfo) {
+            Logger.debugLog("Found new endpoint: " + idEndPoint);
 
             App.sharedPreference().savePotentialClient(
-                    DeviceInfo.otherDevice(discoveredEndpointInfo.getEndpointName(), endPointId, null));
+                    DeviceInfo.otherDevice(discoveredEndpointInfo.getEndpointName(), idEndPoint, null));
 
-
-            Logger.debugLog("==========\nPotentialClients:\n");
-            for (DeviceInfo client : App.sharedPreference().getAllPotentialClient()) {
-                Logger.debugLog(String.format("Client: %s.%s", client.getClientName(), client.getClientNearbyKey()));
-            }
+            sendBroadcast(new Intent(ConfigIntent.ACTION_SEARCH_CLIENT)
+                    .putExtra(ConfigIntent.DISCOVERY_TARGET_ID, idEndPoint)
+                    .putExtra(ConfigIntent.DISCOVERY_TARGET_NAME, discoveredEndpointInfo.getEndpointName())
+                    .putExtra(ConfigIntent.DISCOVERY_TARGET_IS_LOST, false));
         }
 
         @Override
-        public void onEndpointLost(String endPointId) {
-            Logger.debugLog("Lost endpoint: " + endPointId);
+        public void onEndpointLost(String idEndPoint) {
+            Logger.debugLog("Lost endpoint: " + idEndPoint);
 
             App.sharedPreference().removePotentialClient(
-                    DeviceInfo.otherDevice(null, endPointId, null));
+                    DeviceInfo.otherDevice(null, idEndPoint, null));
 
-            Logger.debugLog("==========\nPotentialClients:\n");
-            for (DeviceInfo client : App.sharedPreference().getAllPotentialClient()) {
-                Logger.debugLog(String.format("Client: %s.%s", client.getClientName(), client.getClientNearbyKey()));
-            }
+            sendBroadcast(new Intent(ConfigIntent.ACTION_SEARCH_CLIENT)
+                    .putExtra(ConfigIntent.DISCOVERY_TARGET_ID, idEndPoint)
+                    .putExtra(ConfigIntent.DISCOVERY_TARGET_IS_LOST, true));
         }
     };
 

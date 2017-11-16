@@ -236,7 +236,7 @@ public class MainPresenter {
 //                        //Мертвые точки
 //                        if (status.getStatus().toString().contains("STATUS_ENDPOINT_UNKNOWN")) {
 //                            potentialClients.remove(client);
-//                            mainActivity.removePotentialClient(client);
+//                            mainActivity.removeWasConnectedClient(client);
 //                        }
 //                    }
 //                });
@@ -259,7 +259,7 @@ public class MainPresenter {
 //        DeviceInfo lostDevices = searchLostedDevice(endPointId);
 //        if (lostDevices.getState() != DeviceInfo.State.EMPTY) {
 //            potentialClients.remove(lostDevices);
-//            mainActivity.removePotentialClient(lostDevices);
+//            mainActivity.removeWasConnectedClient(lostDevices);
 //        }
 //    }
 

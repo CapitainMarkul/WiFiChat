@@ -12,6 +12,7 @@ public class ConfigIntent {
 //    public final static String ACTION_SEND_LOST_MESSAGE = "ru.palestra.wifichat.SEND_LOST_MESSAGE";
     public final static String ACTION_SEARCH_CLIENT = "ru.palestra.wifichat.ACTION_SEARCH_CLIENT";
     public final static String ACTION_CONNECTION_INITIATED = "ru.palestra.wifichat.CONNECTION_INITIATED";
+    public final static String ACTION_DELIVERED_MESSAGE = "ru.palestra.wifichat.DELIVERED_MESSAGE";
 
     public final static String MESSAGE = "MESSAGE";
 //    public final static String MSG_TARGET_ID = "MSG_TEXT_MESSAGE";

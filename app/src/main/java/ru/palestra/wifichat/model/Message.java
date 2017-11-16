@@ -45,8 +45,8 @@ public abstract class Message implements Serializable, Comparator<Message> {
         return new AutoValue_Message(from, null, targetName, text, UUID, LocalDateTime.now(Clock.systemDefaultZone()), null);
     }
 
-    public static Message deliveredMessage(Message message) {
-        return new AutoValue_Message(null, null, null, null, UUID.randomUUID().toString(), LocalDateTime.now(Clock.systemDefaultZone()), message);
+    public static Message deliveredMessage(String from, Message message) {
+        return new AutoValue_Message(from, null, null, null, UUID.randomUUID().toString(), LocalDateTime.now(Clock.systemDefaultZone()), message);
     }
 
     public static Message empty() {

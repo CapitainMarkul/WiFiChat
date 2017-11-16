@@ -26,15 +26,15 @@ public class SharedPrefServiceImpl {
     private static final String PREF_FILE_KEY = "pref_offline_chat";
     private static final String PREF_KEY_NAME_MY_DEVICE = "name_device";
     private static final String PREF_KEY_UUID_MY_DEVICE = "UUID_device";
-    private static final String PREF_KEY_POTENTIAL_CLIENTS = "potential_clients";
+    private static final String PREF_KEY_WAS_CONNECTED_CLIENTS = "was_connected_clients";
 
     public SharedPrefServiceImpl(Context context) {
         this.context = context;
     }
 
-    public void savePotentialClient(DeviceInfo client) {
+    public void saveWasConnectedClient(DeviceInfo client) {
         //Проверим есть ли такой клиент в нашей "Базе"
-        List<DeviceInfo> savedClients = getAllPotentialClient();
+        List<DeviceInfo> savedClients = getAllWasConnectedClient();
 
         DeviceInfo[] savedClientsArray = new DeviceInfo[savedClients.size()];
         savedClientsArray = savedClients.toArray(savedClientsArray);
@@ -44,34 +44,34 @@ public class SharedPrefServiceImpl {
                 return;
             } else if (savedClient.getClientName().equals(client.getClientName())) {
                 //Если имена совпадают, а точки различаются, то обновляем точку
-                removePotentialClient(savedClient);
+                removeWasConnectedClient(savedClient);
                 break;
             }
         }
 
-        savePotentialClients(Collections.singletonList(client));
+        saveWasConnectedClients(Collections.singletonList(client));
     }
 
-    private void savePotentialClients(List<DeviceInfo> clients) {
+    private void saveWasConnectedClients(List<DeviceInfo> clients) {
         HashMap<String, String> clientsMap = new HashMap<>();
         for (DeviceInfo client : clients) {
             clientsMap.put(client.getClientNearbyKey(), client.getClientName());
         }
 
-        savePotentialClientsPref(clientsMap);
+        saveWasConnectedClientsPref(clientsMap);
     }
 
-    private void savePotentialClientsPref(Map<String, String> clients) {
+    private void saveWasConnectedClientsPref(Map<String, String> clients) {
         Gson gson = new Gson();
         String hashMapString = gson.toJson(clients);
 
         getPrefFile().edit()
-                .putString(PREF_KEY_POTENTIAL_CLIENTS, hashMapString)
+                .putString(PREF_KEY_WAS_CONNECTED_CLIENTS, hashMapString)
                 .apply();
     }
 
-    public void removePotentialClient(DeviceInfo removedClient) {
-        List<DeviceInfo> potentialClients = getAllPotentialClient();
+    public void removeWasConnectedClient(DeviceInfo removedClient) {
+        List<DeviceInfo> potentialClients = getAllWasConnectedClient();
 
         if (removedClient.getClientName() != null) {
             potentialClients.remove(removedClient);
@@ -86,13 +86,13 @@ public class SharedPrefServiceImpl {
             }
         }
 
-        savePotentialClients(potentialClients);
+        saveWasConnectedClients(potentialClients);
     }
 
-    public List<DeviceInfo> getAllPotentialClient() {
+    public List<DeviceInfo> getAllWasConnectedClient() {
         List<DeviceInfo> potentialClients = new ArrayList<>();
 
-        String storedHashMapString = getPrefFile().getString(PREF_KEY_POTENTIAL_CLIENTS, null);
+        String storedHashMapString = getPrefFile().getString(PREF_KEY_WAS_CONNECTED_CLIENTS, null);
         if (storedHashMapString == null) return Collections.emptyList();
 
         Gson gson = new Gson();

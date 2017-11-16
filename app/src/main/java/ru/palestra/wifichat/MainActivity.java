@@ -25,19 +25,14 @@ import com.google.android.gms.nearby.connection.Payload;
 import com.google.android.gms.nearby.connection.PayloadCallback;
 import com.google.android.gms.nearby.connection.PayloadTransferUpdate;
 
-import org.greenrobot.eventbus.EventBus;
-import org.greenrobot.eventbus.Subscribe;
-import org.greenrobot.eventbus.ThreadMode;
-
 import java.util.Set;
 
 import ru.palestra.wifichat.adapters.ClientsAdapter;
 import ru.palestra.wifichat.adapters.MessagesAdapter;
 import ru.palestra.wifichat.model.DeviceInfo;
-import ru.palestra.wifichat.model.EndPoint;
 import ru.palestra.wifichat.model.Message;
 import ru.palestra.wifichat.services.ConnectToClientsService;
-import ru.palestra.wifichat.services.SendMessageService;
+import ru.palestra.wifichat.services.NearbyService;
 import ru.palestra.wifichat.utils.ConfigIntent;
 
 public class MainActivity extends AppCompatActivity {
@@ -79,6 +74,7 @@ public class MainActivity extends AppCompatActivity {
 
         registerReceiver(searchClientReceiver, new IntentFilter(ConfigIntent.ACTION_SEARCH_CLIENT));
         registerReceiver(acceptConnectionToClientReceiver, new IntentFilter(ConfigIntent.ACTION_CONNECTION_INITIATED));
+        registerReceiver(deliveredMessageReceiver, new IntentFilter(ConfigIntent.ACTION_DELIVERED_MESSAGE));
 
         footer = findViewById(R.id.txt_peek);
         defaultOption = findViewById(R.id.btn_default_option);
@@ -97,12 +93,14 @@ public class MainActivity extends AppCompatActivity {
         sendMessage.setOnClickListener(view -> {
             //send Current Message
 
+            if(targetName == null || targetId == null) return;
 
+            Message sendMessage = Message.newMessage(myDeviceName, targetId, targetName, textMessage.getText().toString());
             startService(
-                    new Intent(this, SendMessageService.class)
-                            .putExtra(ConfigIntent.MESSAGE,
-                                    Message.newMessage(myDeviceName, targetId, targetName, textMessage.getText().toString())));
+                    new Intent(this, NearbyService.class)
+                            .putExtra(ConfigIntent.MESSAGE, sendMessage));
 
+            messagesAdapter.setMessages(sendMessage);
             textMessage.setText("");
 //            mainPresenter.sendMessage(
 //                    textMessage.getText().toString());
@@ -130,14 +128,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startServices() {
-        startService(new Intent(this, ConnectToClientsService.class));
-        startService(new Intent(this, SendMessageService.class));
+//        startService(new Intent(this, ConnectToClientsService.class));
+        startService(new Intent(this, NearbyService.class));
     }
 
     private void stopServices() {
-        // FIXME: 13.11.2017 Падает, если мы вышли, но был запланирован AlarmMAnager. (GoogleApiClient not init)
-        stopService(new Intent(this, SendMessageService.class));
-        stopService(new Intent(this, ConnectToClientsService.class));
+        stopService(new Intent(this, NearbyService.class));
+//        stopService(new Intent(this, ConnectToClientsService.class));
     }
 
     BroadcastReceiver searchClientReceiver = new BroadcastReceiver() {
@@ -148,6 +145,8 @@ public class MainActivity extends AppCompatActivity {
             boolean isLost = intent.getBooleanExtra(ConfigIntent.DISCOVERY_TARGET_IS_LOST, true);
 
             if (isLost) {
+                // TODO: 16.11.2017 Будет работа только с теми, с кем мы успешно законнектились
+                //Не будем отображать тех, кого просто видим
                 clientsAdapter.removeClient(idEndPoint);
             } else {
                 clientsAdapter.setClient(
@@ -165,6 +164,7 @@ public class MainActivity extends AppCompatActivity {
             boolean isDisconnect = intent.getBooleanExtra(ConfigIntent.CONNECTION_TARGET_IS_DISCONNECT, true);
 
             if (isDisconnect) {
+                //todo Если отключили, то покрасили его в списке в серый
                 clientsAdapter.removeClient(idEndPoint);
                 footer.setText(footerText);
             } else {
@@ -176,10 +176,15 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
-    BroadcastReceiver connectionClientReceiver = new BroadcastReceiver() {
+    BroadcastReceiver deliveredMessageReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
+            if (intent == null || intent.getExtras() == null) return;
 
+            Message message =
+                    (Message) intent.getSerializableExtra(ConfigIntent.MESSAGE);
+
+            messagesAdapter.setMessages(message);
         }
     };
 
@@ -226,9 +231,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
-//        EventBus.getDefault().register(this);
-
-//        mainPresenter.getGoogleApiClient().connect();
 
         startServices();
         debugLog("GoogleClient is Start");
@@ -402,7 +404,7 @@ public class MainActivity extends AppCompatActivity {
 //                            mainPresenter.checkNewClient(endPoint, connectionInfo);
 //
 //                    if (temp.getState() != DeviceInfo.State.EMPTY) {
-//                        mainPresenter.removePotentialClient(temp);
+//                        mainPresenter.removeWasConnectedClient(temp);
 //                        mainPresenter.saveConnectedDevice(temp);
 //
 //                        clientsAdapter.setClient(temp);
@@ -456,10 +458,10 @@ public class MainActivity extends AppCompatActivity {
 //            debugLog("Nearby Connections failed" + status.getStatus());
 //// TODO: 13.11.2017 Здесь будет нерабочее. Оставить только выбор таргета
 //            if (status.getStatus().toString().contains("STATUS_ENDPOINT_UNKNOWN")) {
-//                mainPresenter.removePotentialClient(client);
-//                removePotentialClient(client);
+//                mainPresenter.removeWasConnectedClient(client);
+//                removeWasConnectedClient(client);
 //            } else if (status.getStatus().toString().contains("STATUS_ALREADY_CONNECTED_TO_ENDPOINT")) {
-//                mainPresenter.removePotentialClient(client);
+//                mainPresenter.removeWasConnectedClient(client);
 //            }
 //        }
 //    };
@@ -481,7 +483,7 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
-//    public void removePotentialClient(DeviceInfo device) {
+//    public void removeWasConnectedClient(DeviceInfo device) {
 //        clientsAdapter.removeClient(device);
 //    }
 
@@ -599,7 +601,7 @@ public class MainActivity extends AppCompatActivity {
 
         messagesAdapter = new MessagesAdapter();
         messagesAdapter.setCurrentDevice(
-                mainPresenter.getDeviceName());
+                App.sharedPreference().getInfoAboutMyDevice().getClientName());
         messagesRecyclerView.setAdapter(messagesAdapter);
     }
 

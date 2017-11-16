@@ -5,30 +5,7 @@ import android.content.Intent;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
-import android.os.Message;
 import android.support.annotation.Nullable;
-
-import com.google.android.gms.common.api.ResultCallback;
-import com.google.android.gms.common.api.Status;
-import com.google.android.gms.nearby.Nearby;
-import com.google.android.gms.nearby.connection.AdvertisingOptions;
-import com.google.android.gms.nearby.connection.ConnectionInfo;
-import com.google.android.gms.nearby.connection.ConnectionLifecycleCallback;
-import com.google.android.gms.nearby.connection.ConnectionResolution;
-import com.google.android.gms.nearby.connection.Connections;
-import com.google.android.gms.nearby.connection.ConnectionsStatusCodes;
-import com.google.android.gms.nearby.connection.DiscoveredEndpointInfo;
-import com.google.android.gms.nearby.connection.DiscoveryOptions;
-import com.google.android.gms.nearby.connection.EndpointDiscoveryCallback;
-
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.concurrent.TimeUnit;
-
-import ru.palestra.wifichat.App;
-import ru.palestra.wifichat.model.DeviceInfo;
-import ru.palestra.wifichat.utils.ConfigIntent;
-import ru.palestra.wifichat.utils.Logger;
 
 /**
  * Created by da.pavlov1 on 13.11.2017.
@@ -251,7 +228,7 @@ public class ConnectToClientsService extends Service {
 //            Logger.debugLog("Found new endpoint: " + idEndPoint);
 //
 //            App.sharedPreference().saveWasConnectedClient(
-//                    DeviceInfo.otherDevice(discoveredEndpointInfo.getEndpointName(), idEndPoint, null));
+//                    ClientSql.otherDevice(discoveredEndpointInfo.getEndpointName(), idEndPoint, null));
 //
 //            sendBroadcast(new Intent(ConfigIntent.ACTION_SEARCH_CLIENT)
 //                    .putExtra(ConfigIntent.DISCOVERY_TARGET_ID, idEndPoint)
@@ -264,7 +241,7 @@ public class ConnectToClientsService extends Service {
 //            Logger.debugLog("Lost endpoint: " + idEndPoint);
 //
 //            App.sharedPreference().removeWasConnectedClient(
-//                    DeviceInfo.otherDevice(null, idEndPoint, null));
+//                    ClientSql.otherDevice(null, idEndPoint, null));
 //
 //            sendBroadcast(new Intent(ConfigIntent.ACTION_SEARCH_CLIENT)
 //                    .putExtra(ConfigIntent.DISCOVERY_TARGET_ID, idEndPoint)

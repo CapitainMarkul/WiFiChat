@@ -14,7 +14,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import ru.palestra.wifichat.model.DeviceInfo;
+import ru.palestra.wifichat.data.models.viewmodels.Client;
 
 /**
  * Created by da.pavlov1 on 07.11.2017.
@@ -32,14 +32,14 @@ public class SharedPrefServiceImpl {
         this.context = context;
     }
 
-    public void saveWasConnectedClient(DeviceInfo client) {
+    public void saveWasConnectedClient(Client client) {
         //Проверим есть ли такой клиент в нашей "Базе"
-        List<DeviceInfo> savedClients = getAllWasConnectedClient();
+        List<Client> savedClients = getAllWasConnectedClient();
 
-        DeviceInfo[] savedClientsArray = new DeviceInfo[savedClients.size()];
+        Client[] savedClientsArray = new Client[savedClients.size()];
         savedClientsArray = savedClients.toArray(savedClientsArray);
 
-        for (DeviceInfo savedClient : savedClientsArray) {
+        for (Client savedClient : savedClientsArray) {
             if (savedClient.getClientNearbyKey().equals(client.getClientNearbyKey())) {
                 return;
             } else if (savedClient.getClientName().equals(client.getClientName())) {
@@ -52,9 +52,9 @@ public class SharedPrefServiceImpl {
         saveWasConnectedClients(Collections.singletonList(client));
     }
 
-    private void saveWasConnectedClients(List<DeviceInfo> clients) {
+    private void saveWasConnectedClients(List<Client> clients) {
         HashMap<String, String> clientsMap = new HashMap<>();
-        for (DeviceInfo client : clients) {
+        for (Client client : clients) {
             clientsMap.put(client.getClientNearbyKey(), client.getClientName());
         }
 
@@ -70,16 +70,16 @@ public class SharedPrefServiceImpl {
                 .apply();
     }
 
-    public void removeWasConnectedClient(DeviceInfo removedClient) {
-        List<DeviceInfo> potentialClients = getAllWasConnectedClient();
+    public void removeWasConnectedClient(Client removedClient) {
+        List<Client> potentialClients = getAllWasConnectedClient();
 
         if (removedClient.getClientName() != null) {
             potentialClients.remove(removedClient);
         } else {
-            DeviceInfo[] potentialClientsArray = new DeviceInfo[potentialClients.size()];
+            Client[] potentialClientsArray = new Client[potentialClients.size()];
             potentialClientsArray = potentialClients.toArray(potentialClientsArray);
 
-            for (DeviceInfo client : potentialClientsArray) {
+            for (Client client : potentialClientsArray) {
                 if (client.getClientNearbyKey().equals(removedClient.getClientNearbyKey())) {
                     potentialClients.remove(client);
                 }
@@ -89,8 +89,8 @@ public class SharedPrefServiceImpl {
         saveWasConnectedClients(potentialClients);
     }
 
-    public List<DeviceInfo> getAllWasConnectedClient() {
-        List<DeviceInfo> potentialClients = new ArrayList<>();
+    public List<Client> getAllWasConnectedClient() {
+        List<Client> potentialClients = new ArrayList<>();
 
         String storedHashMapString = getPrefFile().getString(PREF_KEY_WAS_CONNECTED_CLIENTS, null);
         if (storedHashMapString == null) return Collections.emptyList();
@@ -104,25 +104,25 @@ public class SharedPrefServiceImpl {
         while (it.hasNext()) {
             Map.Entry client = (Map.Entry) it.next();
             potentialClients.add(
-                    DeviceInfo.otherDevice(client.getValue().toString(), client.getKey().toString(), null));
+                    Client.otherDevice(client.getValue().toString(), client.getKey().toString(), null));
         }
 
         return potentialClients;
     }
 
-    public void saveInfoAboutMyDevice(DeviceInfo myDevice) {
+    public void saveInfoAboutMyDevice(Client myDevice) {
         getPrefFile().edit()
                 .putString(PREF_KEY_NAME_MY_DEVICE, myDevice.getClientName())
                 .putString(PREF_KEY_UUID_MY_DEVICE, myDevice.getUUID())
                 .apply();
     }
 
-    public DeviceInfo getInfoAboutMyDevice() {
+    public Client getInfoAboutMyDevice() {
         String name = getPrefFile().getString(PREF_KEY_NAME_MY_DEVICE, null);
         String UUID = getPrefFile().getString(PREF_KEY_UUID_MY_DEVICE, null);
 
         return name != null && UUID != null ?
-                DeviceInfo.myDevice(name, UUID) : DeviceInfo.empty();
+                Client.myDevice(name, UUID) : Client.empty();
     }
 
     private SharedPreferences getPrefFile() {

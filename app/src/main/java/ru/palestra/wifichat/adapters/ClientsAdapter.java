@@ -13,9 +13,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-import ru.palestra.wifichat.MainActivity;
 import ru.palestra.wifichat.R;
-import ru.palestra.wifichat.model.DeviceInfo;
+import ru.palestra.wifichat.data.models.viewmodels.Client;
 
 
 /**
@@ -23,22 +22,25 @@ import ru.palestra.wifichat.model.DeviceInfo;
  */
 
 public class ClientsAdapter extends RecyclerView.Adapter<ClientsAdapter.ViewHolder> {
+    public interface ItemClick {
+        void onItemClick(Client client, boolean needRequestConnect);
+    }
 
-    private List<DeviceInfo> clients = new ArrayList<>();
-    private MainActivity.ItemClick listener;
+    private List<Client> clients = new ArrayList<>();
+    private ItemClick listener;
 
-    public void setClient(DeviceInfo client) {
+    public void setClient(Client client) {
         if (!isNewClient(client)) return;
 
         clients.add(client);
         notifyDataSetChanged();
     }
 
-    private boolean isNewClient(DeviceInfo client) {
+    private boolean isNewClient(Client client) {
         return !clients.contains(client);
     }
 
-    public void setAllClients(Set<DeviceInfo> clients) {
+    public void setAllClients(Set<Client> clients) {
         this.clients.clear();
         this.clients.addAll(clients);
         notifyDataSetChanged();
@@ -49,11 +51,11 @@ public class ClientsAdapter extends RecyclerView.Adapter<ClientsAdapter.ViewHold
                 searchDisconnectedClient(idEndPoint));
     }
 
-    private DeviceInfo searchDisconnectedClient(String idEndPoint) {
-        for (DeviceInfo client : clients) {
+    private Client searchDisconnectedClient(String idEndPoint) {
+        for (Client client : clients) {
             if (client.getClientNearbyKey().equals(idEndPoint)) return client;
         }
-        return DeviceInfo.empty();
+        return Client.empty();
     }
 
     public void clearAll() {
@@ -61,7 +63,7 @@ public class ClientsAdapter extends RecyclerView.Adapter<ClientsAdapter.ViewHold
         notifyDataSetChanged();
     }
 
-    public void setListener(MainActivity.ItemClick listener) {
+    public void setListener(ItemClick listener) {
         this.listener = listener;
     }
 

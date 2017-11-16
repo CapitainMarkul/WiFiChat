@@ -26,8 +26,6 @@ import com.google.android.gms.nearby.connection.PayloadCallback;
 import com.google.android.gms.nearby.connection.PayloadTransferUpdate;
 import com.google.android.gms.nearby.connection.Strategy;
 
-import org.threeten.bp.Clock;
-import org.threeten.bp.LocalDateTime;
 import org.threeten.bp.temporal.ChronoUnit;
 
 import java.util.ArrayList;
@@ -43,10 +41,11 @@ import java.util.concurrent.TimeUnit;
 
 import ru.palestra.wifichat.App;
 import ru.palestra.wifichat.MessageConverter;
-import ru.palestra.wifichat.model.DeviceInfo;
-import ru.palestra.wifichat.model.Message;
+import ru.palestra.wifichat.data.models.viewmodels.Client;
+import ru.palestra.wifichat.data.models.viewmodels.Message;
 import ru.palestra.wifichat.utils.ConfigIntent;
 import ru.palestra.wifichat.utils.Logger;
+import ru.palestra.wifichat.utils.TimeUtils;
 
 /**
  * Created by da.pavlov1 on 09.11.2017.
@@ -63,7 +62,7 @@ public class NearbyService extends Service {
     public static final String SERVICE_ID = "tensor.off_chat";
     public static final Strategy STRATEGY = Strategy.P2P_CLUSTER;
 
-    private String myDeviceName;
+    private Client myDevice;
 
     private Handler sendMessageServiceHandler;
     private Handler searchClientsServiceHandler;
@@ -80,8 +79,8 @@ public class NearbyService extends Service {
     private boolean isAdvertising;
     private boolean isDiscovering;
 
-    private List<DeviceInfo> connectedClients = new ArrayList<>();
-    private Set<DeviceInfo> potentialClients = new HashSet<>(); //Постоянно находит одинаковые точки
+    private List<Client> connectedClients = new ArrayList<>();
+    private Set<Client> potentialClients = new HashSet<>(); //Постоянно находит одинаковые точки
 
     private List<Message> lostMessages = new ArrayList<>(); //Недоставленные сообщения
     private List<Message> deliveredLostMessages = new ArrayList<>(); //Доставленные "Недоставленные" сообщения
@@ -93,7 +92,7 @@ public class NearbyService extends Service {
         super.onCreate();
         Logger.debugLog("Start: NearbyService & ConnectToClientsService");
 
-        myDeviceName = App.sharedPreference().getInfoAboutMyDevice().getClientName();
+        myDevice = App.sharedPreference().getInfoAboutMyDevice();
 
         runConnectionThread();
         runSendMessageThread();
@@ -147,7 +146,7 @@ public class NearbyService extends Service {
 
         Nearby.Connections.startAdvertising(
                 App.googleApiClient(),
-                myDeviceName,
+                myDevice.getClientName(),
                 SERVICE_ID,
                 connectionLifecycleCallback,
                 new AdvertisingOptions(STRATEGY))
@@ -212,7 +211,7 @@ public class NearbyService extends Service {
             Logger.errorLog("Found new endpoint: " + idEndPoint);
 
             updatePotentialClients(
-                    DeviceInfo.otherDevice(discoveredEndpointInfo.getEndpointName(), idEndPoint, null));
+                    Client.otherDevice(discoveredEndpointInfo.getEndpointName(), idEndPoint, null));
 
             sendBroadcast(new Intent(ConfigIntent.ACTION_SEARCH_CLIENT)
                     .putExtra(ConfigIntent.DISCOVERY_TARGET_ID, idEndPoint)
@@ -225,7 +224,7 @@ public class NearbyService extends Service {
             Logger.debugLog("Lost endpoint: " + idEndPoint);
 
             removePotentialClient(
-                    DeviceInfo.otherDevice(null, idEndPoint, null));
+                    Client.otherDevice(null, idEndPoint, null));
 
             sendBroadcast(new Intent(ConfigIntent.ACTION_SEARCH_CLIENT)
                     .putExtra(ConfigIntent.DISCOVERY_TARGET_ID, idEndPoint)
@@ -249,10 +248,10 @@ public class NearbyService extends Service {
      * SEND MESSAGE PART
      */
     private void runRequestedConnection() {
-        DeviceInfo[] potentialClientsArray = new DeviceInfo[potentialClients.size()];
+        Client[] potentialClientsArray = new Client[potentialClients.size()];
         potentialClientsArray = potentialClients.toArray(potentialClientsArray);
 
-        for (DeviceInfo potentialClient : potentialClientsArray) {
+        for (Client potentialClient : potentialClientsArray) {
             requestConnection(potentialClient);
             // FIXME: 14.11.2017
             // Можно добавить задержку (Проверить)
@@ -264,10 +263,10 @@ public class NearbyService extends Service {
         }
     }
 
-    private void requestConnection(DeviceInfo potentialClient) {
+    private void requestConnection(Client potentialClient) {
         Nearby.Connections.requestConnection(
                 App.googleApiClient(),
-                myDeviceName,
+                myDevice.getClientName(),
                 potentialClient.getClientNearbyKey(),
                 connectionLifecycleCallback
         ).setResultCallback(status -> {
@@ -311,10 +310,10 @@ public class NearbyService extends Service {
     };
 
     private void removeConnectedClient(String idEndPoint) {
-        DeviceInfo[] connectedClientsArray = new DeviceInfo[connectedClients.size()];
+        Client[] connectedClientsArray = new Client[connectedClients.size()];
         connectedClientsArray = connectedClients.toArray(connectedClientsArray);
 
-        for (DeviceInfo connectedClient : connectedClientsArray) {
+        for (Client connectedClient : connectedClientsArray) {
             if (connectedClient.getClientNearbyKey().equals(idEndPoint)) {
                 connectedClients.remove(connectedClient);
 
@@ -340,9 +339,9 @@ public class NearbyService extends Service {
 
                 //Соединение установленно
                 connectedClients.add(
-                        DeviceInfo.otherDevice(nameEndPoint, idEndPoint, null));
+                        Client.otherDevice(nameEndPoint, idEndPoint, null));
                 removePotentialClient(
-                        DeviceInfo.otherDevice(nameEndPoint, idEndPoint, null));
+                        Client.otherDevice(nameEndPoint, idEndPoint, null));
 
                 sendBroadcast(new Intent(ConfigIntent.ACTION_CONNECTION_INITIATED)
                         .putExtra(ConfigIntent.CONNECTION_TARGET_ID, idEndPoint)
@@ -395,10 +394,10 @@ public class NearbyService extends Service {
 //            }
 
             String targetId = message.getTargetId();
-            String targetName = message.getTargetName();
+            String targetName = message.getTargetUUID();
 
 
-            if ((targetName != null && targetName.equals(myDeviceName)))
+            if ((targetName != null && targetName.equals(myDevice)))
 //                    || targetId != null && targetId.equals(myDevice.getClientNearbyKey())) Fixme Мы не знаем наш Id (
             {
                 //Если у нас сменился Id, то сообщение доставить нам можно только по нашему имени,
@@ -409,7 +408,7 @@ public class NearbyService extends Service {
 
                 showMessage(message);
 
-                deliveredLostMessages.add(Message.deliveredMessage(myDeviceName, message));
+                deliveredLostMessages.add(Message.deliveredMessage(myDevice.getClientName(), myDevice.getUUID(), message));
             } else if (targetId == null && targetName == null) {
                 // TODO: 14.11.2017 Save Message, Update Ui. Проверить, есть ли сейчас Broadcast без конечной цели (Вроде нет)
                 //Если target == null, значит это Broadcast
@@ -428,10 +427,10 @@ public class NearbyService extends Service {
             sendingLostMessageComplete = false;
 
             for (Message message : createValidMessage(lostMessages)) {
-                for (DeviceInfo client : connectedClients) {
+                for (Client client : connectedClients) {
                     //Сообщение не нужно передавать назад отправителю
                     if (client.getClientName() != null
-                            && client.getClientName().equals(message.getFrom())) continue;
+                            && client.getClientName().equals(message.getFromName())) continue;
 
                     //Проверяем, пытались ли мы уже отправлять сообщение данному клиенту
                     if (banListSendMessage.get(message) == null ||
@@ -451,7 +450,7 @@ public class NearbyService extends Service {
             sendingDeliveredMessageComplete = false;
 
             for (Message message : createValidMessage(deliveredLostMessages)) {
-                for (DeviceInfo client : connectedClients) {
+                for (Client client : connectedClients) {
                     //Проверяем, пытались ли мы уже отправлять сообщение данному клиенту
                     if (banListSendMessage.get(message) == null ||
                             !banListSendMessage.get(message).contains(client.getClientNearbyKey())) {
@@ -473,7 +472,7 @@ public class NearbyService extends Service {
 
         for (Message message : oldMessages) {
             //Удаляются сообщения старше 2 минут
-            if (ChronoUnit.MINUTES.between(message.getTimeSend(), LocalDateTime.now(Clock.systemDefaultZone())) > 2) {
+            if (ChronoUnit.MINUTES.between(TimeUtils.longToLocalDateTime(message.getTimeSend()), TimeUtils.timeNowLocalDateTime()) > 2) {
                 messages.remove(message);
                 continue;
             }
@@ -511,7 +510,7 @@ public class NearbyService extends Service {
                             // TODO: 14.11.2017 Update Ui
                             //Если точка изменилась, делаем из сообщения Бродкаст
                             lostMessages.add(
-                                    Message.broadcastMessage(message.getFrom(), message.getTargetName(), message.getText(), message.getUUID()));
+                                    Message.broadcastMessage(message.getFromName(), message.getFromUUID(), message.getTargetUUID(), message.getText(), message.getUUID()));
                         } else {
                             lostMessages.add(message);
                         }
@@ -525,11 +524,11 @@ public class NearbyService extends Service {
                         .putExtra(ConfigIntent.MESSAGE, message));
     }
 
-    private void updatePotentialClients(DeviceInfo newPotentialClient) {
-        DeviceInfo[] potentialClientsArray = new DeviceInfo[potentialClients.size()];
+    private void updatePotentialClients(Client newPotentialClient) {
+        Client[] potentialClientsArray = new Client[potentialClients.size()];
         potentialClientsArray = potentialClients.toArray(potentialClientsArray);
 
-        for (DeviceInfo client : potentialClientsArray) {
+        for (Client client : potentialClientsArray) {
             //Добавление нового клиента
             if (client.getClientName().equals(newPotentialClient.getClientName()) &&
                     !client.getClientNearbyKey().equals(newPotentialClient.getClientNearbyKey())) {
@@ -544,11 +543,11 @@ public class NearbyService extends Service {
         potentialClients.add(newPotentialClient);
     }
 
-    private void removePotentialClient(DeviceInfo removePotentialClient) {
-        DeviceInfo[] potentialClientsArray = new DeviceInfo[potentialClients.size()];
+    private void removePotentialClient(Client removePotentialClient) {
+        Client[] potentialClientsArray = new Client[potentialClients.size()];
         potentialClientsArray = potentialClients.toArray(potentialClientsArray);
 
-        for (DeviceInfo client : potentialClientsArray) {
+        for (Client client : potentialClientsArray) {
             //Удаление клиента
             if (client.getClientNearbyKey().equals(removePotentialClient.getClientNearbyKey())) {
                 potentialClients.remove(removePotentialClient);
@@ -561,7 +560,7 @@ public class NearbyService extends Service {
     public String createFooterText() {
         String textClients = "";
         if (!connectedClients.isEmpty()) {
-            for (DeviceInfo client : connectedClients) {
+            for (Client client : connectedClients) {
                 textClients += client.getClientName() + ", ";
             }
             return textClients;

@@ -6,12 +6,15 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import org.threeten.bp.LocalDateTime;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 import ru.palestra.wifichat.R;
-import ru.palestra.wifichat.model.Message;
+import ru.palestra.wifichat.data.models.viewmodels.Message;
+import ru.palestra.wifichat.utils.TimeUtils;
 
 /**
  * Created by Dmitry on 01.11.2017.
@@ -36,23 +39,15 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.ViewHo
 
     private void sortMessages() {
         Collections.sort(messages, (message1, message2) -> {
-            int hourMessage1 = message1.getTimeSend().getHour();
-            int hourMessage2 = message2.getTimeSend().getHour();
-            int minuteMessage1 = message1.getTimeSend().getMinute();
-            int minuteMessage2 = message2.getTimeSend().getMinute();
+            LocalDateTime dateMessage1 = TimeUtils.longToLocalDateTime(message1.getTimeSend());
+            LocalDateTime dateMessage2 = TimeUtils.longToLocalDateTime(message2.getTimeSend());
 
-            if (hourMessage1 > hourMessage2) {
+            if (dateMessage1.isAfter(dateMessage2)) {
                 return 1;
-            } else if (hourMessage1 < hourMessage2) {
-                return -1;
+            } else if (dateMessage1.isEqual(dateMessage2)) {
+                return 0;
             } else {
-                if (minuteMessage1 > minuteMessage2) {
-                    return 1;
-                } else if (minuteMessage1 < minuteMessage2) {
-                    return -1;
-                } else {
-                    return 0;
-                }
+                return -1;
             }
         });
     }
@@ -66,16 +61,18 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.ViewHo
     @Override
     public void onBindViewHolder(MessagesAdapter.ViewHolder holder, int position) {
         Message currentMessage = messages.get(position);
+        LocalDateTime dateCurrentMessage = TimeUtils.longToLocalDateTime(currentMessage.getTimeSend());
+
         if (myDeviceName != null) {
-            if (currentMessage.getFrom().equals(myDeviceName)) {
+            if (currentMessage.getFromName().equals(myDeviceName)) {
                 holder.message.setText(
                         String.format("ME: %s", currentMessage.getText()));
             } else {
                 holder.message.setText(
-                        String.format("%s: %s", currentMessage.getFrom(), currentMessage.getText()));
+                        String.format("%s: %s", currentMessage.getFromName(), currentMessage.getText()));
             }
             holder.timeSend.setText(
-                    String.format("%s:%s", currentMessage.getTimeSend().getHour(), currentMessage.getTimeSend().getMinute()));
+                    String.format("%s:%s", dateCurrentMessage.getHour(), dateCurrentMessage.getMinute()));
         }
     }
 

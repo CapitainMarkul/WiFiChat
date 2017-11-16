@@ -1,6 +1,7 @@
 package ru.palestra.wifichat;
 
 import android.app.Application;
+import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 
@@ -8,6 +9,9 @@ import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.nearby.Nearby;
 import com.jakewharton.threetenabp.AndroidThreeTen;
 
+import ru.palestra.wifichat.data.models.daomodels.DaoMaster;
+import ru.palestra.wifichat.data.models.daomodels.DaoSession;
+import ru.palestra.wifichat.domain.db.DbClient;
 import ru.palestra.wifichat.services.SharedPrefServiceImpl;
 import ru.palestra.wifichat.utils.Logger;
 
@@ -18,12 +22,17 @@ import ru.palestra.wifichat.utils.Logger;
 public class App extends Application {
     private static SharedPrefServiceImpl sharedPrefInstance;
     private static GoogleApiClient googleApiClientInstance;
+    private static DbClient dbClientInstance;
+
+    private DaoSession daoSession;
 
     @Override
     public void onCreate() {
         super.onCreate();
         AndroidThreeTen.init(this);
 
+        initDaoSession();
+        initDbClient();
         initGoogleClient();
         initSharedPreference();
     }
@@ -42,6 +51,17 @@ public class App extends Application {
         sharedPrefInstance = new SharedPrefServiceImpl(this);
     }
 
+    private void initDaoSession() {
+        DaoMaster.DevOpenHelper helper = new DaoMaster.DevOpenHelper(this, "WaiterDb", null);
+        SQLiteDatabase db = helper.getWritableDatabase();
+        DaoMaster daoMaster = new DaoMaster(db);
+        daoSession = daoMaster.newSession();
+    }
+
+    private void initDbClient() {
+        dbClientInstance = new DbClient(daoSession);
+    }
+
     public static GoogleApiClient googleApiClient() {
         return googleApiClientInstance;
     }
@@ -50,6 +70,11 @@ public class App extends Application {
         return sharedPrefInstance;
     }
 
+    public static DbClient dbClient() {
+        return dbClientInstance;
+    }
+
+    // TODO: 16.11.2017 Данные Callback'и можно удалить
     GoogleApiClient.ConnectionCallbacks connectionCallbacks = new GoogleApiClient.ConnectionCallbacks() {
         @Override
         public void onConnected(@Nullable Bundle bundle) {

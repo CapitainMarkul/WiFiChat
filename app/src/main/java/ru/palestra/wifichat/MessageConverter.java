@@ -6,7 +6,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 
-import ru.palestra.wifichat.model.Message;
+import ru.palestra.wifichat.data.models.viewmodels.Message;
 
 /**
  * Created by da.pavlov1 on 09.11.2017.

@@ -1,19 +1,15 @@
 package ru.palestra.wifichat;
 
 import android.content.Intent;
-import android.os.Build;
 import android.os.Bundle;
-import android.speech.tts.TextToSpeech;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.widget.Button;
 import android.widget.EditText;
 
-import java.util.Locale;
 import java.util.UUID;
 
-import ru.palestra.wifichat.model.DeviceInfo;
-import ru.palestra.wifichat.services.SharedPrefServiceImpl;
+import ru.palestra.wifichat.data.models.viewmodels.Client;
 
 /**
  * Created by da.pavlov1 on 07.11.2017.
@@ -23,13 +19,13 @@ public class LoginActivity extends AppCompatActivity {
     private Button login;
     private EditText userNickname;
 
-    private DeviceInfo myDevice;
+    private Client myDevice;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         myDevice = App.sharedPreference().getInfoAboutMyDevice();
 
-        if (myDevice.getState() == DeviceInfo.State.MY_DEVICE) {
+        if (myDevice.getState() == Client.State.MY_DEVICE) {
             gotoMainActivity();
         }
 
@@ -40,7 +36,7 @@ public class LoginActivity extends AppCompatActivity {
 
         login = findViewById(R.id.btn_login);
         login.setOnClickListener(view -> {
-                    myDevice = DeviceInfo.myDevice(
+                    myDevice = Client.myDevice(
                             userNickname.getText().toString(),
                             UUID.randomUUID().toString());
 

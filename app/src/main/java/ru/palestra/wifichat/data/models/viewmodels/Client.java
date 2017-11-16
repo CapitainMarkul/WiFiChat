@@ -1,4 +1,4 @@
-package ru.palestra.wifichat.model;
+package ru.palestra.wifichat.data.models.viewmodels;
 
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -9,7 +9,7 @@ import com.google.auto.value.AutoValue;
  * Created by da.pavlov1 on 07.11.2017.
  */
 @AutoValue
-public abstract class DeviceInfo {
+public abstract class Client {
     public enum State {
         MY_DEVICE, OTHER_DEVICE, EMPTY
     }
@@ -24,16 +24,16 @@ public abstract class DeviceInfo {
     public abstract String getUUID();
 //    public abstract boolean isConnected();
 
-    public static DeviceInfo myDevice(@NonNull String name, @NonNull String UUID) {
-        return new AutoValue_DeviceInfo(name, null, UUID);
+    public static Client myDevice(@NonNull String name, @NonNull String UUID) {
+        return new AutoValue_Client(name, null, UUID);
     }
 
-    public static DeviceInfo otherDevice(@NonNull String name, @NonNull String nearbyKey, @Nullable String UUID) {
-        return new AutoValue_DeviceInfo(name, nearbyKey, UUID);
+    public static Client otherDevice(@NonNull String name, @Nullable String nearbyKey, @Nullable String UUID) {
+        return new AutoValue_Client(name, nearbyKey, UUID);
     }
 
-    public static DeviceInfo empty() {
-        return new AutoValue_DeviceInfo(null, null, null);
+    public static Client empty() {
+        return new AutoValue_Client(null, null, null);
     }
 
     public State getState() {

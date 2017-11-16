@@ -10,6 +10,7 @@ import android.databinding.DataBindingUtil;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 
@@ -152,6 +153,16 @@ public class MainActivity extends AppCompatActivity {
         super.onStop();
 
         stopServices();
+    }
+
+    @Override
+    public void onBackPressed() {
+        new AlertDialog.Builder(this)
+                .setMessage("Уже уходите?")
+                .setNegativeButton("Нет", null)
+                .setPositiveButton("Ага", (arg0, arg1)
+                        -> MainActivity.super.onBackPressed())
+                .create().show();
     }
 
     private ClientsAdapter.ItemClick itemClickListener = (client) -> {

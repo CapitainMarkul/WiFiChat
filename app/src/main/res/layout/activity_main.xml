@@ -25,17 +25,6 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent">
 
-                <Button
-                    android:id="@+id/btn_start_nearby"
-                    android:layout_width="100dp"
-                    android:layout_height="match_parent"
-                    android:text="Start Advertising"/>
-
-                <Button
-                    android:id="@+id/btn_start_search"
-                    android:layout_width="100dp"
-                    android:layout_height="match_parent"
-                    android:text="Start Discovering"/>
 
                 <Button
                     android:id="@+id/btn_default_option"
@@ -52,14 +41,14 @@
                 android:layout_marginEnd="8dp"
                 android:layout_marginStart="8dp"
                 android:layout_marginTop="8dp"
-                android:text="Доступные для подключения: "
-                app:layout_constraintBottom_toTopOf="@+id/rv_potential_client"
+                android:text="Подключенные клиенты: "
+                app:layout_constraintBottom_toTopOf="@+id/rv_clients"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/toolbar" />
 
             <android.support.v7.widget.RecyclerView
-                android:id="@+id/rv_potential_client"
+                android:id="@+id/rv_clients"
                 android:layout_width="match_parent"
                 android:layout_height="357dp"
                 android:layout_marginBottom="32dp"
@@ -71,6 +60,8 @@
                 app:layout_constraintStart_toStartOf="parent" />
         </android.support.constraint.ConstraintLayout>
 
-        <include layout="@layout/bottom_sheet"/>
+        <include
+            android:id="@+id/bottom_sheet"
+            layout="@layout/bottom_sheet"/>
     </android.support.design.widget.CoordinatorLayout>
 </layout>

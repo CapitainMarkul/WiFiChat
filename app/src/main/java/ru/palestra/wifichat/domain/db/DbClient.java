@@ -35,7 +35,6 @@ public class DbClient {
         return command.execute(daoSession);
     }
 
-    // TODO: 16.11.2017 И т.д.
     public List<MessageSql> getAllMsgFromClient(String clientUUID) {
         DbCommand<List<MessageSql>> command = new GetAllMsgFromClient(clientUUID);
         return command.execute(daoSession);

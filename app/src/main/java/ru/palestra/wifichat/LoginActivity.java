@@ -30,7 +30,7 @@ public class LoginActivity extends AppCompatActivity {
         }
 
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.login_activity);
+        setContentView(R.layout.activity_login);
 
         userNickname = findViewById(R.id.et_your_nickname);
 

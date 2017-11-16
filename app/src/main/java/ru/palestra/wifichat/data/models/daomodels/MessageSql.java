@@ -3,7 +3,6 @@ package ru.palestra.wifichat.data.models.daomodels;
 import org.greenrobot.greendao.annotation.Entity;
 import org.greenrobot.greendao.annotation.Id;
 import org.greenrobot.greendao.annotation.NotNull;
-
 import org.greenrobot.greendao.annotation.Generated;
 
 /**
@@ -33,10 +32,10 @@ public class MessageSql {
     @NotNull
     private long timeSend;
 
-    @Generated(hash = 371483593)
+    @Generated(hash = 2112933818)
     public MessageSql(Long id, @NotNull String fromName, @NotNull String fromUUID,
-                      @NotNull String messageUUID, @NotNull String text,
-                      boolean statusDelivered, long timeSend) {
+            @NotNull String messageUUID, @NotNull String text,
+            boolean statusDelivered, long timeSend) {
         this.id = id;
         this.fromName = fromName;
         this.fromUUID = fromUUID;
@@ -46,7 +45,7 @@ public class MessageSql {
         this.timeSend = timeSend;
     }
 
-    @Generated(hash = 1759594602)
+    @Generated(hash = 591022270)
     public MessageSql() {
     }
 
@@ -105,4 +104,5 @@ public class MessageSql {
     public void setTimeSend(long timeSend) {
         this.timeSend = timeSend;
     }
-}
+
+  }

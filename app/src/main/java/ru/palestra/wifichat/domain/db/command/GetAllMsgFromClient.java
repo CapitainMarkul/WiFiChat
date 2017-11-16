@@ -2,7 +2,6 @@ package ru.palestra.wifichat.domain.db.command;
 
 import java.util.List;
 
-import ru.palestra.wifichat.data.models.daomodels.ClientSql;
 import ru.palestra.wifichat.data.models.daomodels.DaoSession;
 import ru.palestra.wifichat.data.models.daomodels.MessageSql;
 
@@ -19,6 +18,7 @@ public class GetAllMsgFromClient implements DbCommand<List<MessageSql>> {
 
     @Override
     public List<MessageSql> execute(DaoSession daoSession) {
+
         return null;
     }
 }

@@ -1,7 +1,7 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 
 buildscript {
-    
+
     repositories {
         google()
         jcenter()
@@ -24,7 +24,7 @@ allprojects {
 
         maven {
             url "http://maven.bridgefy.com/artifactory/libs-release-local"
-            artifactUrls=["http://jcenter.bintray.com/"]
+            artifactUrls = ["http://jcenter.bintray.com/"]
         }
     }
 }
@@ -32,3 +32,46 @@ allprojects {
 task clean(type: Delete) {
     delete rootProject.buildDir
 }
+
+ext.versions = [
+        androidSupport        : "26.1.0",
+        constraintLayout      : "1.0.2",
+        greenDao              : "3.2.2",
+        eventBus              : "3.1.1",
+        threetenTime          : "1.0.5",
+        autoValue             : "1.5",
+        autoValueParcelAdapter: "0.2.5",
+        nearby                : "11.6.0",
+        junit                 : "4.12",
+        runner                : "1.0.1",
+        espresso               : "3.0.1"
+]
+
+ext.support = [
+        appcompat7      : "com.android.support:appcompat-v7:$versions.androidSupport",
+        support4        : "com.android.support:support-v4:$versions.androidSupport",
+        design          : "com.android.support:design:$versions.androidSupport",
+        nearby          : "com.google.android.gms:play-services-nearby:$versions.nearby",
+        recyclerview    : "com.android.support:recyclerview-v7:$versions.androidSupport",
+        constraintLayout: "com.android.support.constraint:constraint-layout:$versions.constraintLayout"
+]
+
+ext.greenRobot = [
+        greenDao        : "org.greenrobot:greendao:$versions.greenDao",
+        eventBus        : "org.greenrobot:eventbus:$versions.eventBus"
+]
+
+ext.threeTen = [
+        threeTen        : "com.jakewharton.threetenabp:threetenabp:$versions.threetenTime"
+]
+
+ext.autoValue = [
+        autoValue       :"com.google.auto.value:auto-value:$versions.autoValue",
+        autoValueParcelAdapter:"com.ryanharter.auto.value:auto-value-parcel-adapter:$versions.autoValueParcelAdapter"
+]
+
+ext.test = [
+        junit           :"junit:junit:$versions.junit",
+        runner          :"com.android.support.test:runner:$versions.runner",
+        espresso        :"com.android.support.test.espresso:espresso-core:$versions.espresso"
+]

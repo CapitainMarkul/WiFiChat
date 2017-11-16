@@ -43,6 +43,7 @@ import ru.palestra.wifichat.App;
 import ru.palestra.wifichat.MessageConverter;
 import ru.palestra.wifichat.data.models.viewmodels.Client;
 import ru.palestra.wifichat.data.models.viewmodels.Message;
+import ru.palestra.wifichat.domain.db.DbClient;
 import ru.palestra.wifichat.utils.ConfigIntent;
 import ru.palestra.wifichat.utils.Logger;
 import ru.palestra.wifichat.utils.TimeUtils;
@@ -61,6 +62,8 @@ public class NearbyService extends Service {
 
     public static final String SERVICE_ID = "tensor.off_chat";
     public static final Strategy STRATEGY = Strategy.P2P_CLUSTER;
+
+    private DbClient dbClient;
 
     private Client myDevice;
 
@@ -92,6 +95,7 @@ public class NearbyService extends Service {
         super.onCreate();
         Logger.debugLog("Start: NearbyService & ConnectToClientsService");
 
+        dbClient = App.dbClient();
         myDevice = App.sharedPreference().getInfoAboutMyDevice();
 
         runConnectionThread();
@@ -592,8 +596,7 @@ public class NearbyService extends Service {
         HandlerThread threadMessage = new HandlerThread("SendMessage", Process.THREAD_PRIORITY_BACKGROUND);
         threadMessage.start();
 
-        Looper sendMessageServiceLooper = threadMessage.getLooper();
-        sendMessageServiceHandler = new SendMessageServiceHandler(sendMessageServiceLooper);
+        sendMessageServiceHandler = new SendMessageServiceHandler(threadMessage.getLooper());
 
         sendMessageServiceHandler.sendEmptyMessage(MSG_START_CONNECT_TO_CLIENTS);
     }
@@ -665,8 +668,7 @@ public class NearbyService extends Service {
         HandlerThread threadConnection = new HandlerThread("ConnectionClient", Process.THREAD_PRIORITY_BACKGROUND);
         threadConnection.start();
 
-        Looper connectionServiceLooper = threadConnection.getLooper();
-        searchClientsServiceHandler = new ConnectionServiceHandler(connectionServiceLooper);
+        searchClientsServiceHandler = new ConnectionServiceHandler(threadConnection.getLooper());
 
         searchClientsServiceHandler.sendEmptyMessage(MSG_START_DISCOVERY);
     }

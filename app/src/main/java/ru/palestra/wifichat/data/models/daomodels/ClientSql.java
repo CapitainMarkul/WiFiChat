@@ -25,17 +25,17 @@ public class ClientSql {
     private transient DaoSession daoSession;
 
     /** Used for active entity operations. */
-    @Generated(hash = 935840142)
-    private transient ClientDbDao myDao;
+    @Generated(hash = 1690804506)
+    private transient ClientSqlDao myDao;
 
-    @Generated(hash = 1672719253)
+    @Generated(hash = 189625148)
     public ClientSql(Long id, @NotNull String name, @NotNull String UUID) {
         this.id = id;
         this.name = name;
         this.UUID = UUID;
     }
 
-    @Generated(hash = 1425551584)
+    @Generated(hash = 977025475)
     public ClientSql() {
     }
 
@@ -100,9 +100,11 @@ public class ClientSql {
     }
 
     /** called by internal mechanisms, do not call yourself. */
-    @Generated(hash = 1574516245)
+    @Generated(hash = 687006560)
     public void __setDaoSession(DaoSession daoSession) {
         this.daoSession = daoSession;
-        myDao = daoSession != null ? daoSession.getClientDbDao() : null;
+        myDao = daoSession != null ? daoSession.getClientSqlDao() : null;
     }
+
+
 }

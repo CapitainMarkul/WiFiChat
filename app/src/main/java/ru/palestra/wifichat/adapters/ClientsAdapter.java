@@ -23,7 +23,7 @@ import ru.palestra.wifichat.data.models.viewmodels.Client;
 
 public class ClientsAdapter extends RecyclerView.Adapter<ClientsAdapter.ViewHolder> {
     public interface ItemClick {
-        void onItemClick(Client client, boolean needRequestConnect);
+        void onItemClick(Client client);
     }
 
     private List<Client> clients = new ArrayList<>();
@@ -79,8 +79,9 @@ public class ClientsAdapter extends RecyclerView.Adapter<ClientsAdapter.ViewHold
         holder.clientName.setText(clients.get(position).getClientName());
         holder.clientMac.setText(clients.get(position).getClientNearbyKey());
 
-        holder.container.setOnClickListener(view -> listener.onItemClick(clients.get(position), true));
-        holder.currentSend.setOnClickListener(view -> listener.onItemClick(clients.get(position), false));
+        // FIXME: 16.11.2017 Убрать потом, активити будет переделана
+        holder.container.setOnClickListener(view -> listener.onItemClick(clients.get(position)));
+        holder.currentSend.setOnClickListener(view -> listener.onItemClick(clients.get(position)));
     }
 
     @Override

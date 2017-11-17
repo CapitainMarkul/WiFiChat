@@ -18,6 +18,6 @@ public class MessageMapper {
 
     // TODO: 16.11.2017 Т.к. сообщения добавляем сразу, без факта доставки, то messageDelivered по умолчанию будет False
     public static MessageSql toMessageDb(Message message) {
-        return new MessageSql(null, message.getFromName(), message.getFromUUID(), message.getUUID(), message.getText(), false, message.getTimeSend());
+        return new MessageSql(null, message.getFromName(), message.getFromUUID(), message.getMsgUUID(), message.getText(), false, message.getTimeSend());
     }
 }

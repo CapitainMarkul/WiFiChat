@@ -1,20 +1,21 @@
 package ru.palestra.wifichat.adapters;
 
+import android.databinding.DataBindingUtil;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.LinearLayout;
-import android.widget.ProgressBar;
-import android.widget.TextView;
+
+import org.threeten.bp.LocalDateTime;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 import ru.palestra.wifichat.R;
 import ru.palestra.wifichat.data.models.viewmodels.Client;
+import ru.palestra.wifichat.data.models.viewmodels.ClientMessageWrap;
+import ru.palestra.wifichat.data.models.viewmodels.Message;
+import ru.palestra.wifichat.databinding.ItemClientBinding;
 
 
 /**
@@ -26,21 +27,26 @@ public class ClientsAdapter extends RecyclerView.Adapter<ClientsAdapter.ViewHold
         void onItemClick(Client client);
     }
 
-    private List<Client> clients = new ArrayList<>();
+    private List<ClientMessageWrap> clients = new ArrayList<>();
+
     private ItemClick listener;
 
-    public void setClient(Client client) {
+    public void setClient(ClientMessageWrap client) {
         if (!isNewClient(client)) return;
 
         clients.add(client);
         notifyDataSetChanged();
     }
 
-    private boolean isNewClient(Client client) {
+    public void setLastMessage() {
+
+    }
+
+    private boolean isNewClient(ClientMessageWrap client) {
         return !clients.contains(client);
     }
 
-    public void setAllClients(Set<Client> clients) {
+    public void setAllClients(List<ClientMessageWrap> clients) {
         this.clients.clear();
         this.clients.addAll(clients);
         notifyDataSetChanged();
@@ -51,11 +57,11 @@ public class ClientsAdapter extends RecyclerView.Adapter<ClientsAdapter.ViewHold
                 searchDisconnectedClient(idEndPoint));
     }
 
-    private Client searchDisconnectedClient(String idEndPoint) {
-        for (Client client : clients) {
-            if (client.getClientNearbyKey().equals(idEndPoint)) return client;
+    private ClientMessageWrap searchDisconnectedClient(String idEndPoint) {
+        for (ClientMessageWrap client : clients) {
+            if (client.getClient().getClientNearbyKey().equals(idEndPoint)) return client;
         }
-        return Client.empty();
+        return null;
     }
 
     public void clearAll() {
@@ -76,12 +82,25 @@ public class ClientsAdapter extends RecyclerView.Adapter<ClientsAdapter.ViewHold
 
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
-        holder.clientName.setText(clients.get(position).getClientName());
-        holder.clientMac.setText(clients.get(position).getClientNearbyKey());
+        final Client client = clients.get(position).getClient();
+        final Message lastMessage = clients.get(position).getLastMessage();
+//        final LocalDateTime timeSend = TimeUtils.longToLocalDateTime(lastMessage.getTimeSend());
 
-        // FIXME: 16.11.2017 Убрать потом, активити будет переделана
-        holder.itemView.setOnClickListener(view -> listener.onItemClick(clients.get(position)));
-        holder.currentSend.setOnClickListener(view -> listener.onItemClick(clients.get(position)));
+        holder.binding.txtClientName.setText(client.getClientName());
+
+//        holder.binding.itemMessage.txtTimeSend
+//                .setText(String.format("%s: %s", timeSend.getHour(), timeSend.getMinute()));
+//        holder.binding.itemMessage.txtItemMessage.setText(lastMessage.getText());
+//
+//        if (!lastMessage.isDelivered())
+//            holder.binding.itemMessage.btnStatusMessage.setVisibility(View.VISIBLE);
+//        else
+//            holder.binding.itemMessage.btnStatusMessage.setVisibility(View.INVISIBLE);
+
+        holder.itemView.setOnClickListener(view -> listener.onItemClick(clients.get(position).getClient()));
+//        holder.binding.itemMessage.btnStatusMessage.setOnClickListener(view -> {  todo CreateListener, for resending massge
+//
+//        });
     }
 
     @Override
@@ -90,21 +109,11 @@ public class ClientsAdapter extends RecyclerView.Adapter<ClientsAdapter.ViewHold
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
-//        private ItemClientBinding binding;
-// TODO: 17.11.2017 Add DataBinding
-        private TextView clientName;
-        private TextView clientMac;
-        private Button currentSend;
-        private ProgressBar waitConnected;
-
+        private ItemClientBinding binding;
 
         public ViewHolder(View itemView) {
             super(itemView);
-
-            clientName = itemView.findViewById(R.id.txt_client_name);
-            clientMac = itemView.findViewById(R.id.txt_client_mac);
-            currentSend = itemView.findViewById(R.id.btn_send_current);
-            waitConnected = itemView.findViewById(R.id.pb_wait_connect);
+            binding = DataBindingUtil.bind(itemView);
         }
     }
 }

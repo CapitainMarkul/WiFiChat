@@ -1,29 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:layout_marginBottom="5dp"
-    android:background="@drawable/message_background"
-    android:gravity="center"
-    android:padding="4dp"
-    android:paddingEnd="12dp"
-    android:paddingStart="12dp">
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:tools="http://schemas.android.com/tools">
 
-    <TextView
-        android:id="@+id/txt_time_send"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="10dp"
-        android:layout_marginRight="10dp"
-        android:textStyle="bold"
-        tools:text="12:35"/>
+    <data>
 
-    <TextView
-        android:id="@+id/txt_item_message"
+    </data>
+
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        tools:text="Text Message... Text Message...Text Message... Text Message... Text Message... "/>
+        android:layout_marginBottom="5dp"
+        android:background="@drawable/message_background"
+        android:gravity="center"
+        android:padding="4dp"
+        android:paddingEnd="12dp"
+        android:paddingStart="12dp">
 
-</LinearLayout>
+        <ImageButton
+            android:id="@+id/btn_status_message"
+            android:layout_width="25dp"
+            android:layout_height="25dp"
+            android:src="@mipmap/ic_launcher"/>
+
+        <TextView
+            android:id="@+id/txt_time_send"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="0.8"
+            android:textAlignment="center"
+            android:textStyle="bold"
+            tools:text="12:35"/>
+
+        <TextView
+            android:id="@+id/txt_item_message"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="0.2"
+            tools:text="Text Message... Text Message...Text Message... Text Message... Text Message... "/>
+    </LinearLayout>
+</layout>

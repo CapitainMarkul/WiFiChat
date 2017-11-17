@@ -51,6 +51,7 @@ public abstract class Client {
                 .setClientName(name)
                 .setClientNearbyKey(nearbyKey)
                 .setUUID(UUID)  // TODO: 17.11.2017 Убрать? Передалать маппер
+                .setOnline(false)
                 .build();
     }
 

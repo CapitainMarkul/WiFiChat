@@ -375,54 +375,58 @@ public class NearbyService extends Service {
     };
 
     private void responseFromClient(String idEndPoint, Message message) {
-        //Проверяем это Новое сообщение, или ответ о доставленном сообщении
-        if (message.getState() == Message.State.DELIVERED_MESSAGE) {
-            Message deliveredMessage = message.getDeliveredMessage();
-
-            if (lostMessages.contains(deliveredMessage))
-                lostMessages.remove(deliveredMessage);
-            if (!deliveredLostMessages.contains(message))
-                deliveredLostMessages.add(message);
-
-            putClientInBanList(message, idEndPoint);
-        } else {
-            //Работаем с обычным типом сообщения
-            //Определим, это совершенно новое сообщение, или это сообщение мы уже кому-то доставили
-//            for (Message deliveredMessage : deliveredLostMessages) {
-//            if (deliveredLostMessages.contains(message)) {
-//                //даем ответ, что такое сообщение уже отправлено, и следует прекратить транслировать его
-//                sendBroadcastMessage(
-//                        Message.deliveredMessage(message), idEndPoint);
-//                return; //Нам не имеет смысла обрабатывать это сообщение, мы его уже доставили
-//            }
-//            }
-
-            String targetId = message.getTargetId();
-            String targetName = message.getTargetUUID();
-
-
-            if ((targetName != null && targetName.equals(myDevice)))
-//                    || targetId != null && targetId.equals(myDevice.getClientNearbyKey())) Fixme Мы не знаем наш Id (
-            {
-                //Если у нас сменился Id, то сообщение доставить нам можно только по нашему имени,
-                //если это произошло, то отправляем сообщение, что не нужно нас искать
-
-                //Если сообщение нам
-                // TODO: 14.11.2017 Save Message, Update Ui
-
-                showMessage(message);
-
-                deliveredLostMessages.add(Message.deliveredMessage(myDevice.getClientName(), myDevice.getUUID(), message));
-            } else if (targetId == null && targetName == null) {
-                // TODO: 14.11.2017 Save Message, Update Ui. Проверить, есть ли сейчас Broadcast без конечной цели (Вроде нет)
-                //Если target == null, значит это Broadcast
-//                mainActivity.showBroadcastMessage(message);
-            } else {
-                if (!lostMessages.contains(message)) {
-                    lostMessages.add(message);
-                }
+        if (isPingPongMsg(message)) ;
+        else if (isDeliveredMessage(message, idEndPoint)) ;
+        else if (isMsgForMe(message)) ;
+        else if (isBroadcastMSG(message)) ;
+        else {
+            if (!lostMessages.contains(message)) {
+                lostMessages.add(message);
             }
         }
+    }
+
+
+    private boolean isPingPongMsg(Message message) {
+        if (message.getState() != Message.State.PING_PONG_MESSAGE) return false;
+        // TODO: 17.11.2017
+        return true;
+    }
+
+    private boolean isDeliveredMessage(Message message, String idEndPoint) {
+        if (message.getState() != Message.State.DELIVERED_MESSAGE) return false;
+
+        Message deliveredMessage = message.getDeliveredMsg();
+
+        if (lostMessages.contains(deliveredMessage))
+            lostMessages.remove(deliveredMessage);
+        if (!deliveredLostMessages.contains(message))
+            deliveredLostMessages.add(message);
+
+        putClientInBanList(message, idEndPoint);
+
+        return true;
+    }
+
+    private boolean isMsgForMe(Message message) {
+        String targetId = message.getTargetId();
+        String targetName = message.getTargetUUID();     // FIXME: 17.11.2017 Здесь будет UUID
+        if (targetName != null && !targetName.equals(myDevice)) return false;
+
+        //Если у нас сменился Id, то сообщение доставить нам можно только по нашему имени,
+        //если это произошло, то отправляем сообщение, что не нужно нас искать
+
+        //Если сообщение нам
+        // TODO: 14.11.2017 Save Message, Update Ui
+        showMessage(message);
+        deliveredLostMessages.add(Message.deliveredMessage(myDevice.getClientName(), myDevice.getUUID(), message));
+
+        return true;
+    }
+
+    private boolean isBroadcastMSG(Message message) {
+        return message.getTargetId() == null && message.getTargetUUID() == null;
+        // TODO: 14.11.2017 Save Message, Update Ui. Проверить, есть ли сейчас Broadcast без конечной цели (Вроде нет)
     }
 
     private void sendLostMessage() {
@@ -514,7 +518,7 @@ public class NearbyService extends Service {
                             // TODO: 14.11.2017 Update Ui
                             //Если точка изменилась, делаем из сообщения Бродкаст
                             lostMessages.add(
-                                    Message.broadcastMessage(message.getFromName(), message.getFromUUID(), message.getTargetUUID(), message.getText(), message.getUUID()));
+                                    Message.broadcastMessage(message.getFromName(), message.getFromUUID(), message.getTargetUUID(), message.getText(), message.getMsgUUID()));
                         } else {
                             lostMessages.add(message);
                         }

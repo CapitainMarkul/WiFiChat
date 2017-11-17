@@ -17,6 +17,7 @@ import android.support.v7.widget.LinearLayoutManager;
 import ru.palestra.wifichat.adapters.ClientsAdapter;
 import ru.palestra.wifichat.adapters.MessagesAdapter;
 import ru.palestra.wifichat.data.models.viewmodels.Client;
+import ru.palestra.wifichat.data.models.viewmodels.ClientMessageWrap;
 import ru.palestra.wifichat.data.models.viewmodels.Message;
 import ru.palestra.wifichat.databinding.ActivityMainBinding;
 import ru.palestra.wifichat.services.NearbyService;
@@ -92,8 +93,8 @@ public class MainActivity extends AppCompatActivity {
                 //Не будем отображать тех, кого просто видим
                 clientsAdapter.removeClient(idEndPoint);
             } else {
-                clientsAdapter.setClient(
-                        Client.otherDevice(nameEndPoint, idEndPoint, null));
+                // TODO: 17.11.2017 Доделать
+                clientsAdapter.setClient(new ClientMessageWrap(Client.otherDevice(nameEndPoint, idEndPoint, null), null));
             }
         }
     };
@@ -113,8 +114,7 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 binding.bottomSheet.txtPeek.setText(footerText);
                 //todo Если подключили, то подкрасили его в списке
-                clientsAdapter.setClient(
-                        Client.otherDevice(nameEndPoint, idEndPoint, null));
+                clientsAdapter.setClient(new ClientMessageWrap(Client.otherDevice(nameEndPoint, idEndPoint, null), null));
             }
         }
     };

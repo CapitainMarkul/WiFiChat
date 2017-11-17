@@ -94,7 +94,8 @@ public class MainActivity extends AppCompatActivity {
                 clientsAdapter.removeClient(idEndPoint);
             } else {
                 // TODO: 17.11.2017 Доделать
-                clientsAdapter.setClient(new ClientMessageWrap(Client.otherDevice(nameEndPoint, idEndPoint, null), null));
+                clientsAdapter.setClient(
+                        new ClientMessageWrap(Client.otherDevice(nameEndPoint, idEndPoint, null), null));
             }
         }
     };
@@ -114,7 +115,8 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 binding.bottomSheet.txtPeek.setText(footerText);
                 //todo Если подключили, то подкрасили его в списке
-                clientsAdapter.setClient(new ClientMessageWrap(Client.otherDevice(nameEndPoint, idEndPoint, null), null));
+                clientsAdapter.setClient(
+                        new ClientMessageWrap(Client.otherDevice(nameEndPoint, idEndPoint, null), null));
             }
         }
     };

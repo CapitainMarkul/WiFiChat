@@ -8,11 +8,11 @@ import ru.palestra.wifichat.data.models.daomodels.DaoSession;
  * Created by da.pavlov1 on 16.11.2017.
  */
 
-public class SaveConnectedClientCommand implements DbCommand<ClientSql> {
-    private final ClientSql clientForSave;
+public class CheckConnectedClientCommand implements DbCommand<ClientSql> {
+    private final String clientUUID;
 
-    public SaveConnectedClientCommand(ClientSql clientForSave) {
-        this.clientForSave = clientForSave;
+    public CheckConnectedClientCommand(String clientUUID) {
+        this.clientUUID = clientUUID;
     }
 
     @Override
@@ -20,8 +20,9 @@ public class SaveConnectedClientCommand implements DbCommand<ClientSql> {
         synchronized (DaoSession.class) {
             final ClientSqlDao clientSqlDao = daoSession.getClientSqlDao();
 
-            clientSqlDao.insert(clientForSave);
-            return clientForSave;
+            return clientSqlDao.queryBuilder()
+                    .where(ClientSqlDao.Properties.UUID.eq(clientUUID))
+                    .unique();
         }
     }
 }

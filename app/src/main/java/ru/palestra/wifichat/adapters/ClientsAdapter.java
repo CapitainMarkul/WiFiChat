@@ -80,7 +80,7 @@ public class ClientsAdapter extends RecyclerView.Adapter<ClientsAdapter.ViewHold
         holder.clientMac.setText(clients.get(position).getClientNearbyKey());
 
         // FIXME: 16.11.2017 Убрать потом, активити будет переделана
-        holder.container.setOnClickListener(view -> listener.onItemClick(clients.get(position)));
+        holder.itemView.setOnClickListener(view -> listener.onItemClick(clients.get(position)));
         holder.currentSend.setOnClickListener(view -> listener.onItemClick(clients.get(position)));
     }
 
@@ -90,7 +90,8 @@ public class ClientsAdapter extends RecyclerView.Adapter<ClientsAdapter.ViewHold
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
-        private LinearLayout container;
+//        private ItemClientBinding binding;
+// TODO: 17.11.2017 Add DataBinding
         private TextView clientName;
         private TextView clientMac;
         private Button currentSend;
@@ -100,7 +101,6 @@ public class ClientsAdapter extends RecyclerView.Adapter<ClientsAdapter.ViewHold
         public ViewHolder(View itemView) {
             super(itemView);
 
-            container = itemView.findViewById(R.id.client_container);
             clientName = itemView.findViewById(R.id.txt_client_name);
             clientMac = itemView.findViewById(R.id.txt_client_mac);
             currentSend = itemView.findViewById(R.id.btn_send_current);

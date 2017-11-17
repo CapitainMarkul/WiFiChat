@@ -1,7 +1,5 @@
 package ru.palestra.wifichat.domain.db.command;
 
-import java.util.List;
-
 import ru.palestra.wifichat.data.models.daomodels.DaoSession;
 import ru.palestra.wifichat.data.models.daomodels.MessageSql;
 import ru.palestra.wifichat.data.models.daomodels.MessageSqlDao;
@@ -10,21 +8,20 @@ import ru.palestra.wifichat.data.models.daomodels.MessageSqlDao;
  * Created by da.pavlov1 on 16.11.2017.
  */
 
-public class GetAllMsgFromClient implements DbCommand<List<MessageSql>> {
-    private final String senderUUID;
+public class SaveSentMsgCommand implements DbCommand<MessageSql> {
+    private final MessageSql sentMessageSql;
 
-    public GetAllMsgFromClient(String senderUUID) {
-        this.senderUUID = senderUUID;
+    public SaveSentMsgCommand(MessageSql sentMessageSql) {
+        this.sentMessageSql = sentMessageSql;
     }
 
     @Override
-    public List<MessageSql> execute(DaoSession daoSession) {
+    public MessageSql execute(DaoSession daoSession) {
         synchronized (DaoSession.class) {
             final MessageSqlDao messageSqlDao = daoSession.getMessageSqlDao();
 
-            return messageSqlDao.queryBuilder()
-                    .where(MessageSqlDao.Properties.FromUUID.eq(senderUUID))
-                    .list();
+            messageSqlDao.insert(sentMessageSql);
+            return sentMessageSql;
         }
     }
 }

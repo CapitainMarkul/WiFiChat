@@ -2,6 +2,7 @@ package ru.palestra.wifichat.domain.db.command;
 
 import ru.palestra.wifichat.data.models.daomodels.DaoSession;
 import ru.palestra.wifichat.data.models.daomodels.MessageSql;
+import ru.palestra.wifichat.data.models.daomodels.MessageSqlDao;
 import ru.palestra.wifichat.data.models.viewmodels.Message;
 
 /**
@@ -17,6 +18,18 @@ public class UpdateMsgStatusCommand implements DbCommand<MessageSql> {
 
     @Override
     public MessageSql execute(DaoSession daoSession) {
-        return null;
+        synchronized (DaoSession.class) {
+            final MessageSqlDao messageSqlDao = daoSession.getMessageSqlDao();
+
+            MessageSql updatedMessageSql =
+                    messageSqlDao.queryBuilder()
+                            .where(MessageSqlDao.Properties.MessageUUID.eq(deliveredMessage.getUUID()))
+                            .unique();
+
+            updatedMessageSql.setStatusDelivered(true);
+            messageSqlDao.update(updatedMessageSql);
+
+            return updatedMessageSql;
+        }
     }
 }

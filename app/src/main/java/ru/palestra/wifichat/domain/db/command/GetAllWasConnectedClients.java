@@ -3,6 +3,7 @@ package ru.palestra.wifichat.domain.db.command;
 import java.util.List;
 
 import ru.palestra.wifichat.data.models.daomodels.ClientSql;
+import ru.palestra.wifichat.data.models.daomodels.ClientSqlDao;
 import ru.palestra.wifichat.data.models.daomodels.DaoSession;
 
 /**
@@ -10,8 +11,13 @@ import ru.palestra.wifichat.data.models.daomodels.DaoSession;
  */
 
 public class GetAllWasConnectedClients implements DbCommand<List<ClientSql>> {
+
     @Override
     public List<ClientSql> execute(DaoSession daoSession) {
-        return null;
+        synchronized (DaoSession.class) {
+            final ClientSqlDao clientSqlDao = daoSession.getClientSqlDao();
+
+            return clientSqlDao.queryBuilder().list();
+        }
     }
 }

@@ -7,11 +7,12 @@ import ru.palestra.wifichat.data.models.daomodels.DaoSession;
 import ru.palestra.wifichat.data.models.daomodels.MessageSql;
 import ru.palestra.wifichat.data.models.viewmodels.Client;
 import ru.palestra.wifichat.data.models.viewmodels.Message;
+import ru.palestra.wifichat.domain.db.command.CheckConnectedClientCommand;
 import ru.palestra.wifichat.domain.db.command.DbCommand;
 import ru.palestra.wifichat.domain.db.command.GetAllMsgFromClient;
 import ru.palestra.wifichat.domain.db.command.GetAllWasConnectedClients;
 import ru.palestra.wifichat.domain.db.command.SaveConnectedClientCommand;
-import ru.palestra.wifichat.domain.db.command.SaveSendedMsgCommand;
+import ru.palestra.wifichat.domain.db.command.SaveSentMsgCommand;
 import ru.palestra.wifichat.domain.db.command.UpdateMsgStatusCommand;
 
 /**
@@ -30,8 +31,13 @@ public class DbClient {
         return command.execute(daoSession);
     }
 
-    public ClientSql saveConnectedClient(Client client) {
-        DbCommand<ClientSql> command = new SaveConnectedClientCommand(client);
+    public ClientSql checkConnectedClient(String clientUUID) {
+        DbCommand<ClientSql> command = new CheckConnectedClientCommand(clientUUID);
+        return command.execute(daoSession);
+    }
+
+    public ClientSql saveConnectedClient(ClientSql clientSql) {
+        DbCommand<ClientSql> command = new SaveConnectedClientCommand(clientSql);
         return command.execute(daoSession);
     }
 
@@ -40,8 +46,8 @@ public class DbClient {
         return command.execute(daoSession);
     }
 
-    public MessageSql saveSendedMsg(Message message) {
-        DbCommand<MessageSql> command = new SaveSendedMsgCommand(message);
+    public MessageSql saveSendedMsg(MessageSql messageSql) {
+        DbCommand<MessageSql> command = new SaveSentMsgCommand(messageSql);
         return command.execute(daoSession);
     }
 

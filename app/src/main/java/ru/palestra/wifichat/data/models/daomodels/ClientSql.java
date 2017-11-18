@@ -106,5 +106,5 @@ public class ClientSql {
         myDao = daoSession != null ? daoSession.getClientSqlDao() : null;
     }
 
-
+  
 }

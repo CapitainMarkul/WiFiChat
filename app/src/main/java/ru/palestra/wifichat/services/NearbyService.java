@@ -150,7 +150,7 @@ public class NearbyService extends Service {
 
         Nearby.Connections.startAdvertising(
                 App.googleApiClient(),
-                myDevice.getClientName(),
+                myDevice.getName(),
                 SERVICE_ID,
                 connectionLifecycleCallback,
                 new AdvertisingOptions(STRATEGY))
@@ -217,10 +217,10 @@ public class NearbyService extends Service {
             updatePotentialClients(
                     Client.otherDevice(discoveredEndpointInfo.getEndpointName(), idEndPoint, null));
 
-            sendBroadcast(new Intent(ConfigIntent.ACTION_SEARCH_CLIENT)
-                    .putExtra(ConfigIntent.DISCOVERY_TARGET_ID, idEndPoint)
-                    .putExtra(ConfigIntent.DISCOVERY_TARGET_NAME, discoveredEndpointInfo.getEndpointName())
-                    .putExtra(ConfigIntent.DISCOVERY_TARGET_IS_LOST, false));
+//            sendBroadcast(new Intent(ConfigIntent.ACTION_SEARCH_CLIENT)
+//                    .putExtra(ConfigIntent.DISCOVERY_TARGET_ID, idEndPoint)
+//                    .putExtra(ConfigIntent.DISCOVERY_TARGET_NAME, discoveredEndpointInfo.getEndpointName())
+//                    .putExtra(ConfigIntent.DISCOVERY_TARGET_IS_LOST, false));
         }
 
         @Override
@@ -230,9 +230,9 @@ public class NearbyService extends Service {
             removePotentialClient(
                     Client.otherDevice(null, idEndPoint, null));
 
-            sendBroadcast(new Intent(ConfigIntent.ACTION_SEARCH_CLIENT)
-                    .putExtra(ConfigIntent.DISCOVERY_TARGET_ID, idEndPoint)
-                    .putExtra(ConfigIntent.DISCOVERY_TARGET_IS_LOST, true));
+//            sendBroadcast(new Intent(ConfigIntent.ACTION_SEARCH_CLIENT)
+//                    .putExtra(ConfigIntent.DISCOVERY_TARGET_ID, idEndPoint)
+//                    .putExtra(ConfigIntent.DISCOVERY_TARGET_IS_LOST, true));
         }
     };
 
@@ -270,8 +270,8 @@ public class NearbyService extends Service {
     private void requestConnection(Client potentialClient) {
         Nearby.Connections.requestConnection(
                 App.googleApiClient(),
-                myDevice.getClientName(),
-                potentialClient.getClientNearbyKey(),
+                myDevice.getName(),
+                potentialClient.getNearbyKey(),
                 connectionLifecycleCallback
         ).setResultCallback(status -> {
             if (status.isSuccess()) {
@@ -292,14 +292,21 @@ public class NearbyService extends Service {
         public void onConnectionInitiated(String endPoint, ConnectionInfo connectionInfo) {
             Logger.debugLog("onConnectionInitiated: START!");
 
-            acceptConnection(endPoint, connectionInfo.getEndpointName());
+            acceptConnection(connectionInfo.getEndpointName(), endPoint);
         }
 
         @Override
-        public void onConnectionResult(String s, ConnectionResolution result) {
+        public void onConnectionResult(String idEndPoint, ConnectionResolution result) {
             switch (result.getStatus().getStatusCode()) {
                 case ConnectionsStatusCodes.STATUS_OK:
                     Logger.debugLog("Connect: OK");
+
+                    // TODO: 18.11.2017 После установки соединения, кидаем пинг-сообщение с нашим UUID
+//                    Logger.errorLog(String.format("Ping to: %s:%s", nameEndPoint, idEndPoint));
+                    Logger.errorLog(String.format("Ping to: %s:%s", idEndPoint, idEndPoint));
+                    sendTargetMessage(
+                            Message.pingPongMessage(myDevice.getName(), myDevice.getUUID(), idEndPoint), idEndPoint);
+
                     break;
                 case ConnectionsStatusCodes.STATUS_CONNECTION_REJECTED:
                     Logger.errorLog("Connect: FAIL" + result.getStatus());
@@ -318,7 +325,7 @@ public class NearbyService extends Service {
         connectedClientsArray = connectedClients.toArray(connectedClientsArray);
 
         for (Client connectedClient : connectedClientsArray) {
-            if (connectedClient.getClientNearbyKey().equals(idEndPoint)) {
+            if (connectedClient.getNearbyKey().equals(idEndPoint)) {
                 connectedClients.remove(connectedClient);
 
                 sendBroadcast(new Intent(ConfigIntent.ACTION_CONNECTION_INITIATED)
@@ -331,7 +338,7 @@ public class NearbyService extends Service {
         }
     }
 
-    private void acceptConnection(String idEndPoint, String nameEndPoint) {
+    private void acceptConnection(String nameEndPoint, String idEndPoint) {
         Nearby.Connections.acceptConnection(
                 App.googleApiClient(),
                 idEndPoint,
@@ -339,19 +346,12 @@ public class NearbyService extends Service {
         ).setResultCallback(status -> {
             if (status.isSuccess()) {
 
-                Logger.errorLog(String.format("Connected to: %s:%s", nameEndPoint, idEndPoint));
+                 Logger.errorLog(String.format("Connected to: %s:%s", nameEndPoint, idEndPoint));
 
-                //Соединение установленно
-                connectedClients.add(
-                        Client.otherDevice(nameEndPoint, idEndPoint, null));
-                removePotentialClient(
-                        Client.otherDevice(nameEndPoint, idEndPoint, null));
-
-                sendBroadcast(new Intent(ConfigIntent.ACTION_CONNECTION_INITIATED)
-                        .putExtra(ConfigIntent.CONNECTION_TARGET_ID, idEndPoint)
-                        .putExtra(ConfigIntent.CONNECTION_TARGET_NAME, nameEndPoint)
-                        .putExtra(ConfigIntent.CONNECTION_FOOTER_TEXT, createFooterText())
-                        .putExtra(ConfigIntent.CONNECTION_TARGET_IS_DISCONNECT, false));
+//                // TODO: 18.11.2017 После установки соединения, кидаем пинг-сообщение с нашим UUID
+//                Logger.errorLog(String.format("Ping to: %s:%s", nameEndPoint, idEndPoint));
+//                sendTargetMessage(
+//                        Message.pingPongMessage(myDevice.getName(), myDevice.getUUID(), idEndPoint), idEndPoint);
             } else {
                 //Соединение не удалось
                 // TODO: 14.11.2017 Действовать в соответствии с кодом ошибки
@@ -365,7 +365,7 @@ public class NearbyService extends Service {
             Message receivedMessage = MessageConverter.getMessage(payload.asBytes());
             if (receivedMessage.getState() == Message.State.EMPTY_MESSAGE) return;
 
-            responseFromClient(idEndPoint, receivedMessage);
+            responseFromClient(receivedMessage, idEndPoint);
         }
 
         @Override
@@ -374,8 +374,8 @@ public class NearbyService extends Service {
         }
     };
 
-    private void responseFromClient(String idEndPoint, Message message) {
-        if (isPingPongMsg(message)) ;
+    private void responseFromClient(Message message, String idEndPoint) {
+        if (isPingPongMsg(message, idEndPoint)) ;
         else if (isDeliveredMessage(message, idEndPoint)) ;
         else if (isMsgForMe(message)) ;
         else if (isBroadcastMSG(message)) ;
@@ -387,9 +387,28 @@ public class NearbyService extends Service {
     }
 
 
-    private boolean isPingPongMsg(Message message) {
+    private boolean isPingPongMsg(Message message, String idEndPoint) {
         if (message.getState() != Message.State.PING_PONG_MESSAGE) return false;
-        // TODO: 17.11.2017
+        Logger.errorLog(String.format("Ping from: %s:%s", message.getFromName(), idEndPoint));
+
+        //Даем ответ пользователю, что его "Пинг сообщение" успешно получено, и обработано
+//        deliveredLostMessages.add(
+//                Message.deliveredMessage(myDevice.getClientName(), myDevice.getUUID(), message));
+
+        //Соединение установленно
+                connectedClients.add(
+                        Client.otherDevice(message.getFromName(), idEndPoint, message.getFromUUID()));
+                removePotentialClient(
+                        Client.otherDevice(message.getFromName(), idEndPoint, null));
+
+                sendBroadcast(new Intent(ConfigIntent.ACTION_CONNECTION_INITIATED)
+                        .putExtra(ConfigIntent.CONNECTION_TARGET_ID, idEndPoint)
+                        .putExtra(ConfigIntent.CONNECTION_TARGET_NAME, message.getFromName())
+                        .putExtra(ConfigIntent.CONNECTION_TARGET_UUID, message.getFromUUID())
+                        .putExtra(ConfigIntent.CONNECTION_FOOTER_TEXT, createFooterText())
+                        .putExtra(ConfigIntent.CONNECTION_TARGET_IS_DISCONNECT, false));
+
+        // TODO: 18.11.2017 Save Client in Db
         return true;
     }
 
@@ -410,8 +429,8 @@ public class NearbyService extends Service {
 
     private boolean isMsgForMe(Message message) {
         String targetId = message.getTargetId();
-        String targetName = message.getTargetUUID();     // FIXME: 17.11.2017 Здесь будет UUID
-        if (targetName != null && !targetName.equals(myDevice)) return false;
+        String targetUUID = message.getTargetUUID();     // FIXME: 17.11.2017 Здесь будет UUID
+        if (targetUUID != null && !targetUUID.equals(myDevice.getUUID())) return false;
 
         //Если у нас сменился Id, то сообщение доставить нам можно только по нашему имени,
         //если это произошло, то отправляем сообщение, что не нужно нас искать
@@ -419,7 +438,7 @@ public class NearbyService extends Service {
         //Если сообщение нам
         // TODO: 14.11.2017 Save Message, Update Ui
         showMessage(message);
-        deliveredLostMessages.add(Message.deliveredMessage(myDevice.getClientName(), myDevice.getUUID(), message));
+        deliveredLostMessages.add(Message.deliveredMessage(myDevice.getName(), myDevice.getUUID(), message));
 
         return true;
     }
@@ -437,13 +456,13 @@ public class NearbyService extends Service {
             for (Message message : createValidMessage(lostMessages)) {
                 for (Client client : connectedClients) {
                     //Сообщение не нужно передавать назад отправителю
-                    if (client.getClientName() != null
-                            && client.getClientName().equals(message.getFromName())) continue;
+                    if (client.getUUID() != null
+                            && client.getUUID().equals(message.getFromUUID())) continue;
 
                     //Проверяем, пытались ли мы уже отправлять сообщение данному клиенту
                     if (banListSendMessage.get(message) == null ||
-                            !banListSendMessage.get(message).contains(client.getClientNearbyKey())) {
-                        sendTargetMessage(message, client.getClientNearbyKey());
+                            !banListSendMessage.get(message).contains(client.getNearbyKey())) {
+                        sendTargetMessage(message, client.getNearbyKey());
                     }
                 }
             }
@@ -461,9 +480,9 @@ public class NearbyService extends Service {
                 for (Client client : connectedClients) {
                     //Проверяем, пытались ли мы уже отправлять сообщение данному клиенту
                     if (banListSendMessage.get(message) == null ||
-                            !banListSendMessage.get(message).contains(client.getClientNearbyKey())) {
+                            !banListSendMessage.get(message).contains(client.getNearbyKey())) {
                         //Отправляем тому, кто прислал нам это сообщение
-                        sendTargetMessage(message, client.getClientNearbyKey());
+                        sendTargetMessage(message, client.getNearbyKey());
                     }
                 }
             }
@@ -506,12 +525,22 @@ public class NearbyService extends Service {
                         MessageConverter.toBytes(message)))
                 .setResultCallback(status -> {
                     if (status.isSuccess()) {
-                        Logger.debugLog("Send target: " + message.getTargetId());
-                        // TODO: 14.11.2017 Update Ui, что сообщение доставлено (пометочку сделать)
+                        Logger.debugLog(String.format("Message: %s | Send target: %s", message.getText(), idEndPoint));
+
+                        //На "Понг" сообщения нам должен ответить САМ получатель, иначе считаем, что контакт не был установлен
+                        if (message.getState() == Message.State.PING_PONG_MESSAGE) return;
+
+                        if(message.getTargetId() != null && message.getTargetId().equals(idEndPoint)){
+                            // TODO: 14.11.2017 Update Ui, что сообщение доставлено (пометочку сделать)
+
+                        }
 
                         putClientInBanList(message, idEndPoint);
                     } else {
                         Logger.debugLog("Send FAIL!!" + status.getStatus());
+
+                        //На "Понг" сообщения нам должен ответить САМ получатель, иначе считаем, что контакт не был установлен
+                        if (message.getState() == Message.State.PING_PONG_MESSAGE) return;
 
                         //Мертвые точки
                         if (status.getStatus().toString().contains("STATUS_ENDPOINT_UNKNOWN")) {
@@ -538,8 +567,8 @@ public class NearbyService extends Service {
 
         for (Client client : potentialClientsArray) {
             //Добавление нового клиента
-            if (client.getClientName().equals(newPotentialClient.getClientName()) &&
-                    !client.getClientNearbyKey().equals(newPotentialClient.getClientNearbyKey())) {
+            if (client.getName().equals(newPotentialClient.getName()) &&
+                    !client.getNearbyKey().equals(newPotentialClient.getNearbyKey())) {
                 //Нужно обновить запись о клиенте, у него сменился idEndPoint
                 potentialClients.remove(client);
                 potentialClients.add(newPotentialClient);
@@ -557,7 +586,7 @@ public class NearbyService extends Service {
 
         for (Client client : potentialClientsArray) {
             //Удаление клиента
-            if (client.getClientNearbyKey().equals(removePotentialClient.getClientNearbyKey())) {
+            if (client.getNearbyKey().equals(removePotentialClient.getNearbyKey())) {
                 potentialClients.remove(removePotentialClient);
 
                 return;
@@ -569,7 +598,7 @@ public class NearbyService extends Service {
         String textClients = "";
         if (!connectedClients.isEmpty()) {
             for (Client client : connectedClients) {
-                textClients += client.getClientName() + ", ";
+                textClients += client.getName() + ", ";
             }
             return textClients;
         } else {

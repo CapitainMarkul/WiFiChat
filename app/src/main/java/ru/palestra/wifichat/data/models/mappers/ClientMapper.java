@@ -29,6 +29,6 @@ public class ClientMapper {
     }
 
     public static ClientSql toClientDb(Client client) {
-        return new ClientSql(null, client.getClientName(), client.getUUID());
+        return new ClientSql(null, client.getName(), client.getUUID());
     }
 }

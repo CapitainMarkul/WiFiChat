@@ -24,6 +24,7 @@ public class ConfigIntent {
 //
     public final static String CONNECTION_TARGET_ID = "CONNECTION_TARGET_ID";
     public final static String CONNECTION_TARGET_NAME = "CONNECTION_TARGET_NAME";
+    public final static String CONNECTION_TARGET_UUID = "CONNECTION_TARGET_UUID";
     public final static String CONNECTION_FOOTER_TEXT = "CONNECTION_FOOTER_TEXT";
     public final static String CONNECTION_TARGET_IS_DISCONNECT = "CONNECTION_TARGET_IS_DISCONNECT";
 }

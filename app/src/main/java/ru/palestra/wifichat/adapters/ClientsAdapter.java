@@ -1,20 +1,19 @@
 package ru.palestra.wifichat.adapters;
 
 import android.databinding.DataBindingUtil;
+import android.graphics.Color;
+import android.support.v7.util.DiffUtil;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
-import org.threeten.bp.LocalDateTime;
-
 import java.util.ArrayList;
 import java.util.List;
 
 import ru.palestra.wifichat.R;
+import ru.palestra.wifichat.adapters.diffutil.ClientsDiffUtil;
 import ru.palestra.wifichat.data.models.viewmodels.Client;
-import ru.palestra.wifichat.data.models.viewmodels.ClientMessageWrap;
-import ru.palestra.wifichat.data.models.viewmodels.Message;
 import ru.palestra.wifichat.databinding.ItemClientBinding;
 
 
@@ -27,45 +26,38 @@ public class ClientsAdapter extends RecyclerView.Adapter<ClientsAdapter.ViewHold
         void onItemClick(Client client);
     }
 
-    private List<ClientMessageWrap> clients = new ArrayList<>();
+    private List<Client> clients = new ArrayList<>();
 
     private ItemClick listener;
 
-    public void setClient(ClientMessageWrap client) {
+    public void setClient(Client client) {
         if (!isNewClient(client)) return;
 
         clients.add(client);
         notifyDataSetChanged();
     }
 
-    public void setLastMessage() {
-
+    private boolean isNewClient(Client client) {
+        return !clients.contains(client);
+//        for (ClientMessageWrap client : clients) {
+//            if (client.getClient().equals(clientMessageWrap.getClient())) return false;
+//        }
+//// TODO: 17.11.2017 Хз
+//        return true;
     }
 
-    private boolean isNewClient(ClientMessageWrap clientMessageWrap) {
-        for (ClientMessageWrap client : clients) {
-            if (client.getClient().equals(clientMessageWrap.getClient())) return false;
-        }
-// TODO: 17.11.2017 Хз
-        return true;
-    }
+    public void updateClients(List<Client> newClients) {
+        DiffUtil.DiffResult diffResult =
+                DiffUtil.calculateDiff(new ClientsDiffUtil(this.clients, newClients));
 
-    public void setAllClients(List<ClientMessageWrap> clients) {
         this.clients.clear();
-        this.clients.addAll(clients);
-        notifyDataSetChanged();
+        this.clients.addAll(newClients);
+        diffResult.dispatchUpdatesTo(this);
+        notifyDataSetChanged(); // TODO: 18.11.2017 Исправить diffUtil
     }
 
-    public void removeClient(String idEndPoint) {
-        clients.remove(
-                searchDisconnectedClient(idEndPoint));
-    }
-
-    private ClientMessageWrap searchDisconnectedClient(String idEndPoint) {
-        for (ClientMessageWrap client : clients) {
-            if (client.getClient().getClientNearbyKey().equals(idEndPoint)) return client;
-        }
-        return null;
+    public List<Client> getAllClients() {
+        return clients;
     }
 
     public void clearAll() {
@@ -86,12 +78,17 @@ public class ClientsAdapter extends RecyclerView.Adapter<ClientsAdapter.ViewHold
 
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
-        final Client client = clients.get(position).getClient();
-        final Message lastMessage = clients.get(position).getLastMessage();
+        final Client client = clients.get(position);
+//        final Message lastMessage = clients.get(position);
 //        final LocalDateTime timeSend = TimeUtils.longToLocalDateTime(lastMessage.getTimeSend());
 
-        holder.binding.txtClientName.setText(client.getClientName());
+        holder.binding.txtClientName.setText(client.getName());
 
+        if (client.isOnline()) {
+            holder.itemView.setBackgroundColor(Color.GREEN);
+        } else {
+            holder.itemView.setBackgroundColor(Color.GRAY);
+        }
 //        holder.binding.itemMessage.txtTimeSend
 //                .setText(String.format("%s: %s", timeSend.getHour(), timeSend.getMinute()));
 //        holder.binding.itemMessage.txtItemMessage.setText(lastMessage.getText());
@@ -101,7 +98,7 @@ public class ClientsAdapter extends RecyclerView.Adapter<ClientsAdapter.ViewHold
 //        else
 //            holder.binding.itemMessage.btnStatusMessage.setVisibility(View.INVISIBLE);
 
-        holder.itemView.setOnClickListener(view -> listener.onItemClick(clients.get(position).getClient()));
+        holder.itemView.setOnClickListener(view -> listener.onItemClick(clients.get(position)));
 //        holder.binding.itemMessage.btnStatusMessage.setOnClickListener(view -> {  todo CreateListener, for resending massge
 //
 //        });

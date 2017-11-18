@@ -14,10 +14,13 @@ import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import ru.palestra.wifichat.adapters.ClientsAdapter;
 import ru.palestra.wifichat.adapters.MessagesAdapter;
+import ru.palestra.wifichat.data.models.mappers.ClientMapper;
 import ru.palestra.wifichat.data.models.viewmodels.Client;
-import ru.palestra.wifichat.data.models.viewmodels.ClientMessageWrap;
 import ru.palestra.wifichat.data.models.viewmodels.Message;
 import ru.palestra.wifichat.databinding.ActivityMainBinding;
 import ru.palestra.wifichat.services.NearbyService;
@@ -32,7 +35,7 @@ public class MainActivity extends AppCompatActivity {
     private MessagesAdapter messagesAdapter;
 
     private String targetId;
-    private String targetName;
+    private String targetUUID;
 
     private Client myDevice;
 
@@ -42,14 +45,15 @@ public class MainActivity extends AppCompatActivity {
         binding = DataBindingUtil.setContentView(this, R.layout.activity_main);
 
         myDevice = App.sharedPreference().getInfoAboutMyDevice();
-        setTitle(myDevice.getClientName());
+        setTitle(myDevice.getName());
 
         checkPermission();
 
         setupClientsRecyclerView();
         setupMessagesRecyclerView();
 
-        registerReceiver(searchClientReceiver, new IntentFilter(ConfigIntent.ACTION_SEARCH_CLIENT));
+        setupWasConnectedClients();
+
         registerReceiver(acceptConnectionToClientReceiver, new IntentFilter(ConfigIntent.ACTION_CONNECTION_INITIATED));
         registerReceiver(deliveredMessageReceiver, new IntentFilter(ConfigIntent.ACTION_DELIVERED_MESSAGE));
 
@@ -60,10 +64,10 @@ public class MainActivity extends AppCompatActivity {
 
         /** SendMessage */
         binding.bottomSheet.btnSendMessage.setOnClickListener(view -> {
-            if (targetName == null || targetId == null) return;
+            if (targetUUID == null || targetId == null) return;
 
             Message sendMessage =
-                    Message.newMessage(myDevice.getClientName(), myDevice.getUUID(), targetId, targetName, binding.bottomSheet.textMessage.getText().toString());
+                    Message.newMessage(myDevice.getName(), myDevice.getUUID(), targetId, targetUUID, binding.bottomSheet.textMessage.getText().toString());
             startService(
                     new Intent(this, NearbyService.class)
                             .putExtra(ConfigIntent.MESSAGE, sendMessage));
@@ -81,43 +85,51 @@ public class MainActivity extends AppCompatActivity {
         stopService(new Intent(this, NearbyService.class));
     }
 
-    BroadcastReceiver searchClientReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            String idEndPoint = intent.getStringExtra(ConfigIntent.DISCOVERY_TARGET_ID);
-            String nameEndPoint = intent.getStringExtra(ConfigIntent.DISCOVERY_TARGET_NAME);
-            boolean isLost = intent.getBooleanExtra(ConfigIntent.DISCOVERY_TARGET_IS_LOST, true);
-
-            if (isLost) {
-                // TODO: 16.11.2017 Будет работа только с теми, с кем мы успешно законнектились
-                //Не будем отображать тех, кого просто видим
-                clientsAdapter.removeClient(idEndPoint);
-            } else {
-                // TODO: 17.11.2017 Доделать
-                clientsAdapter.setClient(
-                        new ClientMessageWrap(Client.otherDevice(nameEndPoint, idEndPoint, null), null));
-            }
-        }
-    };
-
     BroadcastReceiver acceptConnectionToClientReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             String idEndPoint = intent.getStringExtra(ConfigIntent.CONNECTION_TARGET_ID);
             String nameEndPoint = intent.getStringExtra(ConfigIntent.CONNECTION_TARGET_NAME);
+            String UUIDEndPoint = intent.getStringExtra(ConfigIntent.CONNECTION_TARGET_UUID);
             String footerText = intent.getStringExtra(ConfigIntent.CONNECTION_FOOTER_TEXT);
             boolean isDisconnect = intent.getBooleanExtra(ConfigIntent.CONNECTION_TARGET_IS_DISCONNECT, true);
 
-            if (isDisconnect) {
-                //todo Если отключили, то покрасили его в списке в серый
-                clientsAdapter.removeClient(idEndPoint);
-                binding.bottomSheet.txtPeek.setText(footerText);
+            binding.bottomSheet.txtPeek.setText(footerText);
+
+            List<Client> allClientsAdapter = new ArrayList<>();
+            allClientsAdapter.addAll(clientsAdapter.getAllClients());
+
+            // TODO: 18.11.2017 Set UUID
+            Client newClient = Client.otherDevice(nameEndPoint, idEndPoint, UUIDEndPoint);
+
+
+            if (!isDisconnect) {
+                //Если клиент подключился
+                for (Client oldClient : allClientsAdapter) {
+                    if (oldClient.getUUID().equals(newClient.getUUID())) {
+                        int indexClient = allClientsAdapter.indexOf(oldClient);
+                        allClientsAdapter.remove(indexClient);
+                        allClientsAdapter.add(indexClient, Client.isOnline(oldClient));
+// FIXME: 18.11.2017 Говнокод
+                        clientsAdapter.updateClients(allClientsAdapter);
+                        return;
+                    }
+                }
+
+                allClientsAdapter.add(Client.isOnline(newClient));
+
             } else {
-                binding.bottomSheet.txtPeek.setText(footerText);
-                //todo Если подключили, то подкрасили его в списке
-                clientsAdapter.setClient(
-                        new ClientMessageWrap(Client.otherDevice(nameEndPoint, idEndPoint, null), null));
+                for (Client oldClient : allClientsAdapter) {
+                    if (oldClient.getNearbyKey().equals(idEndPoint)) {
+                        int indexClient = allClientsAdapter.indexOf(oldClient);
+                        allClientsAdapter.remove(indexClient);
+                        allClientsAdapter.add(indexClient, Client.isOffline(oldClient));
+                        break;
+                    }
+                }
             }
+
+            clientsAdapter.updateClients(allClientsAdapter);
         }
     };
 
@@ -171,10 +183,10 @@ public class MainActivity extends AppCompatActivity {
         // TODO: 16.11.2017 Create New Chat Goto New Activity
 
         Logger.debugLog(String.format("Current target: %s - %s",
-                client.getClientName(), client.getClientNearbyKey()));
+                client.getName(), client.getNearbyKey()));
 
-        targetId = client.getClientNearbyKey();
-        targetName = client.getClientName();
+        targetId = client.getNearbyKey();
+        targetUUID = client.getUUID();
     };
 
 
@@ -212,8 +224,14 @@ public class MainActivity extends AppCompatActivity {
 
         messagesAdapter = new MessagesAdapter();
         messagesAdapter.setCurrentDevice(
-                App.sharedPreference().getInfoAboutMyDevice().getClientName());
+                App.sharedPreference().getInfoAboutMyDevice().getName());
         binding.bottomSheet.massagesList.setAdapter(messagesAdapter);
+    }
+
+    private void setupWasConnectedClients() {
+        // FIXME: 18.11.2017 Работа с БД?
+        clientsAdapter.updateClients(
+                ClientMapper.toListClientView(App.dbClient().getAllWasConnectedClients()));
     }
 
     private void scrollToBottom() {

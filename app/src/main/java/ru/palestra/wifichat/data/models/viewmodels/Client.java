@@ -17,9 +17,9 @@ public abstract class Client {
     }
 
     @Nullable
-    public abstract String getClientName();
+    public abstract String getName();
     @Nullable
-    public abstract String getClientNearbyKey();
+    public abstract String getNearbyKey();
     @Nullable
     public abstract String getUUID();
 
@@ -31,8 +31,8 @@ public abstract class Client {
 
     @AutoValue.Builder
     abstract static class Builder {
-        abstract Builder setClientName(String clientName);
-        abstract Builder setClientNearbyKey(String clientNearbyKey);
+        abstract Builder setName(String clientName);
+        abstract Builder setNearbyKey(String clientNearbyKey);
         abstract Builder setUUID(String clientUUID);
         abstract Builder setOnline(boolean isOnline);
         abstract Client build();
@@ -40,7 +40,7 @@ public abstract class Client {
 
     public static Client myDevice(@NonNull String name, @NonNull String UUID) {
         return Client.builder()
-                .setClientName(name)
+                .setName(name)
                 .setUUID(UUID)
                 .setOnline(true)
                 .build();
@@ -48,8 +48,8 @@ public abstract class Client {
 
     public static Client otherDevice(@NonNull String name, @Nullable String nearbyKey, @Nullable String UUID) {
         return Client.builder()
-                .setClientName(name)
-                .setClientNearbyKey(nearbyKey)
+                .setName(name)
+                .setNearbyKey(nearbyKey)
                 .setUUID(UUID)  // TODO: 17.11.2017 Убрать? Передалать маппер
                 .setOnline(false)
                 .build();
@@ -57,22 +57,37 @@ public abstract class Client {
 
     public static Client updateUUID(@NonNull Client client, @NotNull String clientUUID) {
         return Client.builder()
-                .setClientName(client.getClientName())
-                .setClientNearbyKey(client.getClientNearbyKey())
+                .setName(client.getName())
+                .setNearbyKey(client.getNearbyKey())
                 .setUUID(clientUUID)
                 .setOnline(true)
                 .build();
     }
 
+    public static Client isOnline(@NonNull Client client) {
+        return Client.builder()
+                .setName(client.getName())
+                .setNearbyKey(client.getNearbyKey())
+                .setUUID(client.getUUID())
+                .setOnline(true)
+                .build();
+    }
+
+    public static Client isOffline(@NonNull Client client) {
+        return Client.builder()
+                .setName(client.getName())
+                .setNearbyKey(client.getNearbyKey())
+                .setUUID(client.getUUID())
+                .setOnline(false)
+                .build();
+    }
+
     public static Client empty() {
-        return Client.builder().build();
+        return Client.builder().setOnline(false).build();
     }
 
     public State getState() {
-        return getClientName() == null && getUUID() == null ?
-                State.EMPTY :
-                getClientNearbyKey() == null ?
-                        State.MY_DEVICE :
-                        State.OTHER_DEVICE;
+        return getName() == null && getUUID() == null ? State.EMPTY :
+                getNearbyKey() == null ? State.MY_DEVICE : State.OTHER_DEVICE;
     }
 }

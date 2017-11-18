@@ -96,12 +96,11 @@ public abstract class Message implements Serializable {
     }
 
     //todo Нет targetUUID, необходимо учитывать. Здесь мы только "Знакомимся"
-    public static Message pingPongMessage(String fromName, String fromUUID, String targetId, String text) {
+    public static Message pingPongMessage(String fromName, String fromUUID, String targetId) {
         return Message.builder()
                 .setFromName(fromName)
                 .setFromUUID(fromUUID)
                 .setTargetId(targetId)
-                .setText(text)
                 .setMsgUUID(UUID.randomUUID().toString())
                 .setTimeSend(TimeUtils.timeNowLong())
                 .setDelivered(false)

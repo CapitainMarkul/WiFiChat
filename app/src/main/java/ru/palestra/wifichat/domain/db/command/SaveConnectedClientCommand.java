@@ -20,8 +20,16 @@ public class SaveConnectedClientCommand implements DbCommand<ClientSql> {
         synchronized (DaoSession.class) {
             final ClientSqlDao clientSqlDao = daoSession.getClientSqlDao();
 
+            ClientSql savedClient = clientSqlDao.queryBuilder()
+                    .where(ClientSqlDao.Properties.UUID.eq(clientForSave.getUUID()))
+                    .unique();
+
+            if(savedClient != null) return savedClient;
+
             clientSqlDao.insert(clientForSave);
             return clientForSave;
         }
     }
+
+
 }

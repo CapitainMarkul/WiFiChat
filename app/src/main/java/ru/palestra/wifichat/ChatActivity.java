@@ -94,10 +94,9 @@ public class ChatActivity extends AppCompatActivity {
     }
 
     private View.OnClickListener sendMessageListener = view -> {
-        if (targetUUID == null || targetNearbyId == null) return;
-
         Message sendMessage =
                 Message.newMessage(myDevice.getName(), myDevice.getUUID(), targetNearbyId, targetUUID, binding.textMessage.getText().toString());
+
         startService(
                 new Intent(this, NearbyService.class)
                         .putExtra(ConfigIntent.MESSAGE, sendMessage));

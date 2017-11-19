@@ -405,9 +405,7 @@ public class NearbyService extends Service {
         putClientInBanList(message, idEndPoint);
         dbClient.updateMsgStatus(deliveredMessage);
 
-
-// TODO: 19.11.2017 Update State Message (isDelivered)
-        if(deliveredMessage.getFromUUID().equals(myDevice.getUUID())){
+        if (deliveredMessage.getFromUUID().equals(myDevice.getUUID())) {
             //Обновляем UI (Посылаем сообщение со статусом доставлено)
             updateMessageAdapter(Message.updateStatus(deliveredMessage));
         }

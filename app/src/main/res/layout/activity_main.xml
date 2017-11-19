@@ -59,9 +59,5 @@
                 app:layout_constraintHorizontal_bias="0.0"
                 app:layout_constraintStart_toStartOf="parent" />
         </android.support.constraint.ConstraintLayout>
-
-        <include
-            android:id="@+id/bottom_sheet"
-            layout="@layout/bottom_sheet"/>
     </android.support.design.widget.CoordinatorLayout>
 </layout>

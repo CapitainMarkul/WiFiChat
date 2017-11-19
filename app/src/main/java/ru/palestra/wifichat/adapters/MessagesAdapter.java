@@ -1,6 +1,7 @@
 package ru.palestra.wifichat.adapters;
 
 import android.databinding.DataBindingUtil;
+import android.support.annotation.NonNull;
 import android.support.v7.util.DiffUtil;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
@@ -10,7 +11,6 @@ import android.view.ViewGroup;
 import org.threeten.bp.LocalDateTime;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import ru.palestra.wifichat.R;
@@ -27,17 +27,8 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.ViewHo
     private List<Message> messages = new ArrayList<>();
     private String myDeviceName;
 
-    public void setCurrentDevice(String myDeviceName) {
+    public void setCurrentDevice(@NonNull String myDeviceName) {
         this.myDeviceName = myDeviceName;
-    }
-
-    public void setMessage(Message message) {
-        if (!messages.contains(message)) {
-            messages.add(message);
-            sortMessages();
-
-            notifyDataSetChanged();
-        }
     }
 
     public void updateMessages(List<Message> messages) {
@@ -46,22 +37,25 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.ViewHo
         this.messages.clear();
         this.messages.addAll(messages);
         diffResult.dispatchUpdatesTo(this);
-        notifyDataSetChanged(); // TODO: 18.11.2017 Исправить diffUtil
     }
+//
+//    private void sortMessages() {
+//        Collections.sort(messages, (message1, message2) -> {
+//            LocalDateTime dateMessage1 = TimeUtils.longToLocalDateTime(message1.getTimeSend());
+//            LocalDateTime dateMessage2 = TimeUtils.longToLocalDateTime(message2.getTimeSend());
+//
+//            if (dateMessage1.isAfter(dateMessage2)) {
+//                return 1;
+//            } else if (dateMessage1.isEqual(dateMessage2)) {
+//                return 0;
+//            } else {
+//                return -1;
+//            }
+//        });
+//    }
 
-    private void sortMessages() {
-        Collections.sort(messages, (message1, message2) -> {
-            LocalDateTime dateMessage1 = TimeUtils.longToLocalDateTime(message1.getTimeSend());
-            LocalDateTime dateMessage2 = TimeUtils.longToLocalDateTime(message2.getTimeSend());
-
-            if (dateMessage1.isAfter(dateMessage2)) {
-                return 1;
-            } else if (dateMessage1.isEqual(dateMessage2)) {
-                return 0;
-            } else {
-                return -1;
-            }
-        });
+    public List<Message> getMessages(){
+        return messages;
     }
 
     @Override
@@ -75,23 +69,21 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.ViewHo
         Message currentMessage = messages.get(position);
         LocalDateTime dateCurrentMessage = TimeUtils.longToLocalDateTime(currentMessage.getTimeSend());
 
-        if (myDeviceName != null) {
-            if (currentMessage.getFromName().equals(myDeviceName)) {
-                holder.binding.txtTextMessage.setText(
-                        String.format("ME: %s", currentMessage.getText()));
+        holder.binding.txtTimeSend.setText(
+                String.format("%s:%s", dateCurrentMessage.getHour(), dateCurrentMessage.getMinute()));
 
-                if (currentMessage.isDelivered()) {
-                    holder.binding.btnStatusMessage.setVisibility(View.INVISIBLE);
-                } else {
-                    holder.binding.btnStatusMessage.setVisibility(View.VISIBLE);
-                }
+        if (currentMessage.getFromName().equals(myDeviceName)) {
+            holder.binding.txtTextMessage.setText(
+                    String.format("ME: %s", currentMessage.getText()));
+
+            if (currentMessage.isDelivered()) {
+                holder.binding.btnStatusMessage.setVisibility(View.INVISIBLE);
             } else {
-                holder.binding.txtTextMessage.setText(
-                        String.format("%s: %s", currentMessage.getFromName(), currentMessage.getText()));
+                holder.binding.btnStatusMessage.setVisibility(View.VISIBLE);
             }
-
-            holder.binding.txtTimeSend.setText(
-                    String.format("%s:%s", dateCurrentMessage.getHour(), dateCurrentMessage.getMinute()));
+        } else {
+            holder.binding.txtTextMessage.setText(
+                    String.format("%s: %s", currentMessage.getFromName(), currentMessage.getText()));
         }
     }
 

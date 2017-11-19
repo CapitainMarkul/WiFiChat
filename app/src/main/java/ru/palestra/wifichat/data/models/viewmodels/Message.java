@@ -122,6 +122,7 @@ public abstract class Message implements Serializable {
                 .setFromName(message.getFromName())
                 .setFromUUID(message.getFromUUID())
                 .setMsgUUID(message.getMsgUUID())
+                .setText(message.getText())
                 .setTimeSend(message.getTimeSend())
                 .setDelivered(true)
                 .setPingPongTypeMsg(false)

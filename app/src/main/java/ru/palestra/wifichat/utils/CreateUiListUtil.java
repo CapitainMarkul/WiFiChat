@@ -14,11 +14,11 @@ import ru.palestra.wifichat.domain.db.DbClient;
  * Created by Dmitry on 19.11.2017.
  */
 
-public class UpdateClientsList {
+public class CreateUiListUtil {
     private static List<Client> uiClients = new ArrayList<>(); //Лист, для отображения
     private final DbClient dbClient;
 
-    private UpdateClientsList(@NonNull DbClient dbClient) {
+    private CreateUiListUtil(@NonNull DbClient dbClient) {
         this.dbClient = dbClient;
 
         //Заружаем оффлайн список клиентов
@@ -27,7 +27,7 @@ public class UpdateClientsList {
     }
 
     public static void init(@NonNull DbClient dbClient) {
-        new UpdateClientsList(dbClient);
+        new CreateUiListUtil(dbClient);
     }
 
     public static void clientConnected(String idEndPoint, Client client) {

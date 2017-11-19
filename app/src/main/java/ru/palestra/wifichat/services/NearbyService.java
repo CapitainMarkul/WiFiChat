@@ -49,7 +49,7 @@ import ru.palestra.wifichat.data.models.viewmodels.Message;
 import ru.palestra.wifichat.utils.ConfigIntent;
 import ru.palestra.wifichat.utils.Logger;
 import ru.palestra.wifichat.utils.TimeUtils;
-import ru.palestra.wifichat.utils.UpdateClientsList;
+import ru.palestra.wifichat.utils.CreateUiListUtil;
 
 /**
  * Created by da.pavlov1 on 09.11.2017.
@@ -100,7 +100,7 @@ public class NearbyService extends Service {
         myDevice = App.sharedPreference().getInfoAboutMyDevice();
         dbClient = App.dbClient();
 
-        UpdateClientsList.init(dbClient);
+        CreateUiListUtil.init(dbClient);
 
         runConnectionThread();
         runSendMessageThread();
@@ -319,9 +319,9 @@ public class NearbyService extends Service {
             if (disconnectedClient.getNearbyKey().equals(idEndPoint)) {
                 connectedClients.remove(disconnectedClient);
 
-                UpdateClientsList.clientDisconnect(disconnectedClient);
+                CreateUiListUtil.clientDisconnect(disconnectedClient);
                 sendBroadcast(new Intent(ConfigIntent.ACTION_CONNECTION_INITIATED)
-                        .putParcelableArrayListExtra(ConfigIntent.UPDATED_CLIENTS, UpdateClientsList.getUiClients()));
+                        .putParcelableArrayListExtra(ConfigIntent.UPDATED_CLIENTS, CreateUiListUtil.getUiClients()));
 
                 break;
             }
@@ -383,9 +383,9 @@ public class NearbyService extends Service {
         connectedClients.add(connectedClient);
         removePotentialClient(connectedClient);
 
-        UpdateClientsList.clientConnected(idEndPoint, connectedClient);
+        CreateUiListUtil.clientConnected(idEndPoint, connectedClient);
         sendBroadcast(new Intent(ConfigIntent.ACTION_CONNECTION_INITIATED)
-                .putParcelableArrayListExtra(ConfigIntent.UPDATED_CLIENTS, UpdateClientsList.getUiClients()));
+                .putParcelableArrayListExtra(ConfigIntent.UPDATED_CLIENTS, CreateUiListUtil.getUiClients()));
 
         dbClient.saveConnectedClient(
                 ClientMapper.toClientDb(connectedClient));
@@ -403,11 +403,14 @@ public class NearbyService extends Service {
             deliveredLostMessages.add(message);
 
         putClientInBanList(message, idEndPoint);
-// TODO: 19.11.2017 Update State Message (isDelivered)
-        //Обновляем UI (Посылаем сообщение со статусом доставлено)
-        updateMessageAdapter(
-                Message.updateStatus(message.getDeliveredMsg()));
         dbClient.updateMsgStatus(deliveredMessage);
+
+
+// TODO: 19.11.2017 Update State Message (isDelivered)
+        if(deliveredMessage.getFromUUID().equals(myDevice.getUUID())){
+            //Обновляем UI (Посылаем сообщение со статусом доставлено)
+            updateMessageAdapter(Message.updateStatus(deliveredMessage));
+        }
 
         return true;
     }

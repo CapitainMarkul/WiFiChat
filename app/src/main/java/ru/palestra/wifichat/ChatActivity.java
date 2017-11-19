@@ -11,6 +11,9 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.view.View;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import ru.palestra.wifichat.adapters.MessagesAdapter;
 import ru.palestra.wifichat.data.models.mappers.MessageMapper;
 import ru.palestra.wifichat.data.models.viewmodels.Client;
@@ -25,6 +28,8 @@ import ru.palestra.wifichat.utils.ConfigIntent;
 
 public class ChatActivity extends AppCompatActivity {
     private ActivityChatBinding binding;
+
+    private List<Message> uiListMessages = new ArrayList<>();
 
     private MessagesAdapter messagesAdapter;
     private Client myDevice;
@@ -60,10 +65,33 @@ public class ChatActivity extends AppCompatActivity {
             Message message =
                     (Message) intent.getSerializableExtra(ConfigIntent.MESSAGE);
 
-            messagesAdapter.setMessage(message);
+            uiListMessages.clear();
+            uiListMessages.addAll(messagesAdapter.getMessages());
+
+            messagesAdapter.updateMessages(createUiList(message));
             scrollToBottom();
         }
     };
+
+    private List<Message> createUiList(Message newMessage) {
+        Message[] oldMessagesArray = new Message[uiListMessages.size()];
+        oldMessagesArray = uiListMessages.toArray(oldMessagesArray);
+
+        for (Message oldMessage : oldMessagesArray) {
+            if (oldMessage.getMsgUUID().equals(newMessage.getMsgUUID())) {
+                //Обновляем сообщение
+                int removedIndex = uiListMessages.indexOf(oldMessage);
+
+                uiListMessages.remove(removedIndex);
+                uiListMessages.add(removedIndex, newMessage);
+
+                return uiListMessages;
+            }
+        }
+        //Если это новое сообщение
+        uiListMessages.add(newMessage);
+        return uiListMessages;
+    }
 
     private View.OnClickListener sendMessageListener = view -> {
         if (targetUUID == null || targetNearbyId == null) return;
@@ -74,8 +102,11 @@ public class ChatActivity extends AppCompatActivity {
                 new Intent(this, NearbyService.class)
                         .putExtra(ConfigIntent.MESSAGE, sendMessage));
 
+        uiListMessages.clear();
+        uiListMessages.addAll(messagesAdapter.getMessages());
+
         // TODO: 19.11.2017 DiffUtil
-        messagesAdapter.setMessage(sendMessage);
+        messagesAdapter.updateMessages(createUiList(sendMessage));
         scrollToBottom();
         binding.textMessage.setText("");
     };

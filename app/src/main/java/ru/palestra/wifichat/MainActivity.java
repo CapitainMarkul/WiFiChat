@@ -23,7 +23,7 @@ import ru.palestra.wifichat.databinding.ActivityMainBinding;
 import ru.palestra.wifichat.services.NearbyService;
 import ru.palestra.wifichat.utils.ConfigIntent;
 import ru.palestra.wifichat.utils.Logger;
-import ru.palestra.wifichat.utils.UpdateClientsList;
+import ru.palestra.wifichat.utils.CreateUiListUtil;
 
 public class MainActivity extends AppCompatActivity {
     private final static String TAG = MainActivity.class.getSimpleName();
@@ -44,12 +44,10 @@ public class MainActivity extends AppCompatActivity {
         checkPermission();
 
         setupClientsRecyclerView();
-
         setupWasConnectedClients();
 
-        startServices();
-
         registerReceiver(acceptConnectionToClientReceiver, new IntentFilter(ConfigIntent.ACTION_CONNECTION_INITIATED));
+        startServices();
     }
 
     @Override
@@ -88,9 +86,9 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
 
         //Проверим, появились ли новые, подключенные клиенты
-        if (UpdateClientsList.getUiClients().size() > 0) {
+        if (CreateUiListUtil.getUiClients().size() > 0) {
             clientsAdapter.updateClients(
-                    UpdateClientsList.getUiClients());
+                    CreateUiListUtil.getUiClients());
         }
     }
 

@@ -7,6 +7,7 @@ import com.google.auto.value.AutoValue;
 import java.io.Serializable;
 import java.util.UUID;
 
+import ru.palestra.wifichat.data.models.daomodels.MessageSql;
 import ru.palestra.wifichat.utils.TimeUtils;
 
 
@@ -89,6 +90,19 @@ public abstract class Message implements Serializable {
                 .build();
     }
 
+    public static Message toViewMessage(MessageSql messageSql) {
+        return Message.builder()
+                .setFromName(messageSql.getFromName())
+                .setFromUUID(messageSql.getFromUUID())
+                .setTargetUUID(messageSql.getTargetUUID())
+                .setText(messageSql.getText())
+                .setMsgUUID(messageSql.getMessageUUID())
+                .setTimeSend(messageSql.getTimeSend())
+                .setDelivered(messageSql.getStatusDelivered())
+                .setPingPongTypeMsg(false)
+                .build();
+    }
+
     public static Message broadcastMessage(String fromName, String fromUUID, String targetUUID, String text, String originalMessageUUID) {
         return Message.builder()
                 .setFromName(fromName)
@@ -129,7 +143,6 @@ public abstract class Message implements Serializable {
                 .build();
     }
 
-    //todo Нет targetUUID, необходимо учитывать. Здесь мы только "Знакомимся"
     public static Message pingPongMessage(String fromName, String fromUUID, String targetId) {
         return Message.builder()
                 .setFromName(fromName)

@@ -38,21 +38,6 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.ViewHo
         this.messages.addAll(messages);
         diffResult.dispatchUpdatesTo(this);
     }
-//
-//    private void sortMessages() {
-//        Collections.sort(messages, (message1, message2) -> {
-//            LocalDateTime dateMessage1 = TimeUtils.longToLocalDateTime(message1.getTimeSend());
-//            LocalDateTime dateMessage2 = TimeUtils.longToLocalDateTime(message2.getTimeSend());
-//
-//            if (dateMessage1.isAfter(dateMessage2)) {
-//                return 1;
-//            } else if (dateMessage1.isEqual(dateMessage2)) {
-//                return 0;
-//            } else {
-//                return -1;
-//            }
-//        });
-//    }
 
     public List<Message> getMessages(){
         return messages;

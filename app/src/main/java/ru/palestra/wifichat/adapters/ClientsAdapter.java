@@ -89,19 +89,8 @@ public class ClientsAdapter extends RecyclerView.Adapter<ClientsAdapter.ViewHold
         } else {
             holder.itemView.setBackgroundColor(Color.GRAY);
         }
-//        holder.binding.itemMessage.txtTimeSend
-//                .setText(String.format("%s: %s", timeSend.getHour(), timeSend.getMinute()));
-//        holder.binding.itemMessage.txtItemMessage.setText(lastMessage.getText());
-//
-//        if (!lastMessage.isDelivered())
-//            holder.binding.itemMessage.btnStatusMessage.setVisibility(View.VISIBLE);
-//        else
-//            holder.binding.itemMessage.btnStatusMessage.setVisibility(View.INVISIBLE);
 
         holder.itemView.setOnClickListener(view -> listener.onItemClick(clients.get(position)));
-//        holder.binding.itemMessage.btnStatusMessage.setOnClickListener(view -> {  todo CreateListener, for resending massge
-//
-//        });
     }
 
     @Override

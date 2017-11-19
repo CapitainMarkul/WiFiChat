@@ -1,5 +1,8 @@
 package ru.palestra.wifichat.data.models.mappers;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import ru.palestra.wifichat.data.models.daomodels.MessageSql;
 import ru.palestra.wifichat.data.models.viewmodels.Message;
 
@@ -16,8 +19,16 @@ public class MessageMapper {
         return Message.newMessage(messageSql.getFromName(), messageSql.getFromUUID(), null, null, messageSql.getText());
     }
 
-    // TODO: 16.11.2017 Т.к. сообщения добавляем сразу, без факта доставки, то messageDelivered по умолчанию будет False
+    public static List<Message> toListMessageView(List<MessageSql> messageSqls) {
+        List<Message> messages = new ArrayList<>();
+
+        for (MessageSql messageSql : messageSqls) {
+            messages.add(toMessageView(messageSql));
+        }
+        return messages;
+    }
+
     public static MessageSql toMessageDb(Message message) {
-        return new MessageSql(null, message.getFromName(), message.getFromUUID(), message.getMsgUUID(), message.getText(), false, message.getTimeSend());
+        return new MessageSql(null, message.getFromName(), message.getFromUUID(), message.getTargetUUID(), message.getMsgUUID(), message.getText(), false, message.getTimeSend());
     }
 }

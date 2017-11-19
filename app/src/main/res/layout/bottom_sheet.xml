@@ -31,27 +31,27 @@
             android:layout_above="@+id/send_container"
             android:layout_below="@+id/txt_peek" />
 
-        <LinearLayout
-            android:id="@+id/send_container"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_alignParentBottom="true"
-            android:orientation="horizontal">
+        <!--<LinearLayout-->
+            <!--android:id="@+id/send_container"-->
+            <!--android:layout_width="match_parent"-->
+            <!--android:layout_height="wrap_content"-->
+            <!--android:layout_alignParentBottom="true"-->
+            <!--android:orientation="horizontal">-->
 
-            <EditText
-                android:id="@+id/text_message"
-                android:layout_width="match_parent"
-                android:layout_height="40dp"
-                android:layout_weight="0.2"
-                android:inputType="text"
-                tools:ignore="LabelFor" />
+            <!--<EditText-->
+                <!--android:id="@+id/text_message"-->
+                <!--android:layout_width="match_parent"-->
+                <!--android:layout_height="40dp"-->
+                <!--android:layout_weight="0.2"-->
+                <!--android:inputType="text"-->
+                <!--tools:ignore="LabelFor" />-->
 
-            <Button
-                android:id="@+id/btn_send_message"
-                android:layout_width="match_parent"
-                android:layout_height="40dp"
-                android:layout_weight="0.6" />
-        </LinearLayout>
+            <!--<Button-->
+                <!--android:id="@+id/btn_send_message"-->
+                <!--android:layout_width="match_parent"-->
+                <!--android:layout_height="40dp"-->
+                <!--android:layout_weight="0.6" />-->
+        <!--</LinearLayout>-->
 
     </RelativeLayout>
 </layout>

@@ -22,19 +22,28 @@ public abstract class Message implements Serializable {
 
     @Nullable
     public abstract String getFromName();
+
     @Nullable
     public abstract String getFromUUID();
+
     @Nullable
     public abstract String getTargetId();
+
     @Nullable
     public abstract String getTargetUUID();
+
     @Nullable
     public abstract String getText();
+
     public abstract String getMsgUUID();
+
     public abstract Long getTimeSend();
+
     public abstract boolean isDelivered();  //доставлено/не доставлено
+
     @Nullable
     public abstract Message getDeliveredMsg(); //чтение доставленного сообщения
+
     public abstract boolean isPingPongTypeMsg();
 
     static Builder builder() {
@@ -44,15 +53,25 @@ public abstract class Message implements Serializable {
     @AutoValue.Builder
     abstract static class Builder {
         abstract Builder setFromName(String name);
+
         abstract Builder setFromUUID(String UUID);
+
         abstract Builder setTargetId(String id);
+
         abstract Builder setTargetUUID(String UUID);
+
         abstract Builder setText(String text);
+
         abstract Builder setMsgUUID(String UUID);
+
         abstract Builder setTimeSend(Long time);
+
         abstract Builder setDelivered(boolean isDelivered);
+
         abstract Builder setDeliveredMsg(Message message);
+
         abstract Builder setPingPongTypeMsg(boolean isPingPong);
+
         abstract Message build();
     }
 
@@ -83,6 +102,7 @@ public abstract class Message implements Serializable {
                 .build();
     }
 
+    //Сообщение о доставке
     public static Message deliveredMessage(String fromName, String fromUUID, Message message) {
         return Message.builder()
                 .setFromName(fromName)
@@ -91,6 +111,19 @@ public abstract class Message implements Serializable {
                 .setTimeSend(TimeUtils.timeNowLong())
                 .setDelivered(false)
                 .setDeliveredMsg(message)
+                .setPingPongTypeMsg(false)
+                .build();
+    }
+
+    //Обновление статуса сообщения
+    public static Message updateStatus(Message message) {
+        return Message.builder()
+                .setTargetId(message.getTargetId())
+                .setFromName(message.getFromName())
+                .setFromUUID(message.getFromUUID())
+                .setMsgUUID(message.getMsgUUID())
+                .setTimeSend(message.getTimeSend())
+                .setDelivered(true)
                 .setPingPongTypeMsg(false)
                 .build();
     }
@@ -109,7 +142,10 @@ public abstract class Message implements Serializable {
     }
 
     public static Message empty() {
-        return Message.builder().build();
+        return Message.builder()
+                .setDelivered(false)
+                .setPingPongTypeMsg(false)
+                .build();
     }
 
     public State getState() {

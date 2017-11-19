@@ -42,6 +42,7 @@ ext.versions = [
         autoValue             : "1.5",
         autoValueParcelAdapter: "0.2.5",
         nearby                : "11.6.0",
+        parceller             : "1.1.9",
         junit                 : "4.12",
         runner                : "1.0.1",
         espresso               : "3.0.1"
@@ -67,11 +68,15 @@ ext.threeTen = [
 
 ext.autoValue = [
         autoValue       :"com.google.auto.value:auto-value:$versions.autoValue",
-        autoValueParcelAdapter:"com.ryanharter.auto.value:auto-value-parcel-adapter:$versions.autoValueParcelAdapter"
+        autoValueParcel:"com.ryanharter.auto.value:auto-value-parcel:$versions.autoValueParcelAdapter"
 ]
 
 ext.test = [
         junit           :"junit:junit:$versions.junit",
         runner          :"com.android.support.test:runner:$versions.runner",
         espresso        :"com.android.support.test.espresso:espresso-core:$versions.espresso"
+]
+
+ext.parceller = [
+    parceller           :"org.parceler:parceler-api:$versions.parceller"
 ]

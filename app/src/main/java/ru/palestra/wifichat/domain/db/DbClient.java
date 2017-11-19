@@ -5,7 +5,6 @@ import java.util.List;
 import ru.palestra.wifichat.data.models.daomodels.ClientSql;
 import ru.palestra.wifichat.data.models.daomodels.DaoSession;
 import ru.palestra.wifichat.data.models.daomodels.MessageSql;
-import ru.palestra.wifichat.data.models.viewmodels.Client;
 import ru.palestra.wifichat.data.models.viewmodels.Message;
 import ru.palestra.wifichat.domain.db.command.CheckConnectedClientCommand;
 import ru.palestra.wifichat.domain.db.command.DbCommand;
@@ -41,12 +40,12 @@ public class DbClient {
         return command.execute(daoSession);
     }
 
-    public List<MessageSql> getAllMsgFromClient(String clientUUID) {
-        DbCommand<List<MessageSql>> command = new GetAllMsgFromClient(clientUUID);
+    public List<MessageSql> getAllMsgFromClient(String myUUID, String clientUUID) {
+        DbCommand<List<MessageSql>> command = new GetAllMsgFromClient(myUUID, clientUUID);
         return command.execute(daoSession);
     }
 
-    public MessageSql saveSendedMsg(MessageSql messageSql) {
+    public MessageSql saveSentMsg(MessageSql messageSql) {
         DbCommand<MessageSql> command = new SaveSentMsgCommand(messageSql);
         return command.execute(daoSession);
     }

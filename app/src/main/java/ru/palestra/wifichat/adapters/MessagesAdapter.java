@@ -1,10 +1,11 @@
 package ru.palestra.wifichat.adapters;
 
+import android.databinding.DataBindingUtil;
+import android.support.v7.util.DiffUtil;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.TextView;
 
 import org.threeten.bp.LocalDateTime;
 
@@ -13,7 +14,9 @@ import java.util.Collections;
 import java.util.List;
 
 import ru.palestra.wifichat.R;
+import ru.palestra.wifichat.adapters.diffutil.MessageDiffUtil;
 import ru.palestra.wifichat.data.models.viewmodels.Message;
+import ru.palestra.wifichat.databinding.ItemMessageBinding;
 import ru.palestra.wifichat.utils.TimeUtils;
 
 /**
@@ -28,13 +31,22 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.ViewHo
         this.myDeviceName = myDeviceName;
     }
 
-    public void setMessages(Message message) {
+    public void setMessage(Message message) {
         if (!messages.contains(message)) {
             messages.add(message);
             sortMessages();
 
             notifyDataSetChanged();
         }
+    }
+
+    public void updateMessages(List<Message> messages) {
+        DiffUtil.DiffResult diffResult =
+                DiffUtil.calculateDiff(new MessageDiffUtil(this.messages, messages));
+        this.messages.clear();
+        this.messages.addAll(messages);
+        diffResult.dispatchUpdatesTo(this);
+        notifyDataSetChanged(); // TODO: 18.11.2017 Исправить diffUtil
     }
 
     private void sortMessages() {
@@ -65,13 +77,20 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.ViewHo
 
         if (myDeviceName != null) {
             if (currentMessage.getFromName().equals(myDeviceName)) {
-                holder.message.setText(
+                holder.binding.txtTextMessage.setText(
                         String.format("ME: %s", currentMessage.getText()));
+
+                if (currentMessage.isDelivered()) {
+                    holder.binding.btnStatusMessage.setVisibility(View.INVISIBLE);
+                } else {
+                    holder.binding.btnStatusMessage.setVisibility(View.VISIBLE);
+                }
             } else {
-                holder.message.setText(
+                holder.binding.txtTextMessage.setText(
                         String.format("%s: %s", currentMessage.getFromName(), currentMessage.getText()));
             }
-            holder.timeSend.setText(
+
+            holder.binding.txtTimeSend.setText(
                     String.format("%s:%s", dateCurrentMessage.getHour(), dateCurrentMessage.getMinute()));
         }
     }
@@ -82,14 +101,11 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.ViewHo
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
-        private TextView message;
-        private TextView timeSend;
+        private ItemMessageBinding binding;
 
         public ViewHolder(View itemView) {
             super(itemView);
-
-            message = itemView.findViewById(R.id.txt_item_message);
-            timeSend = itemView.findViewById(R.id.txt_time_send);
+            binding = DataBindingUtil.bind(itemView);
         }
     }
 }

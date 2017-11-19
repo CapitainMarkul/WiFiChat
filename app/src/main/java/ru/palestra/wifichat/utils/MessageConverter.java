@@ -1,4 +1,4 @@
-package ru.palestra.wifichat;
+package ru.palestra.wifichat.utils;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;

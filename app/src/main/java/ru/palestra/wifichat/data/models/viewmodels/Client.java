@@ -1,5 +1,6 @@
 package ru.palestra.wifichat.data.models.viewmodels;
 
+import android.os.Parcelable;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
@@ -11,7 +12,7 @@ import org.greenrobot.greendao.annotation.NotNull;
  * Created by da.pavlov1 on 07.11.2017.
  */
 @AutoValue
-public abstract class Client {
+public abstract class Client implements Parcelable {
     public enum State {
         MY_DEVICE, OTHER_DEVICE, EMPTY
     }
@@ -64,10 +65,10 @@ public abstract class Client {
                 .build();
     }
 
-    public static Client isOnline(@NonNull Client client) {
+    public static Client isOnline(@NonNull  String newIdEndPoint, @NonNull Client client) {
         return Client.builder()
                 .setName(client.getName())
-                .setNearbyKey(client.getNearbyKey())
+                .setNearbyKey(newIdEndPoint)
                 .setUUID(client.getUUID())
                 .setOnline(true)
                 .build();

@@ -43,13 +43,16 @@ dependencies {
     //AutoValue
     compileOnly autoValue.autoValue
     annotationProcessor autoValue.autoValue
-    implementation autoValue.autoValueParcelAdapter
+    annotationProcessor autoValue.autoValueParcel
 
     //Nearby
     implementation support.nearby
 
-    //Support
+    //Parceller
+//    implementation parceller.parceller
+//    annotationProcessor parceller.parceller
 
+    //Support
     implementation support.appcompat7
     implementation support.design
     implementation support.constraintLayout

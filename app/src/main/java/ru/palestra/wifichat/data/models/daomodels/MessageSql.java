@@ -21,6 +21,9 @@ public class MessageSql {
     private String fromUUID;    //messageUUID Sender
 
     @NotNull
+    private String targetUUID;
+
+    @NotNull
     private String messageUUID;    //messageUUID Current Message
 
     @NotNull
@@ -32,13 +35,14 @@ public class MessageSql {
     @NotNull
     private long timeSend;
 
-    @Generated(hash = 2112933818)
+    @Generated(hash = 1113663296)
     public MessageSql(Long id, @NotNull String fromName, @NotNull String fromUUID,
-            @NotNull String messageUUID, @NotNull String text,
-            boolean statusDelivered, long timeSend) {
+            @NotNull String targetUUID, @NotNull String messageUUID,
+            @NotNull String text, boolean statusDelivered, long timeSend) {
         this.id = id;
         this.fromName = fromName;
         this.fromUUID = fromUUID;
+        this.targetUUID = targetUUID;
         this.messageUUID = messageUUID;
         this.text = text;
         this.statusDelivered = statusDelivered;
@@ -73,6 +77,14 @@ public class MessageSql {
         this.fromUUID = fromUUID;
     }
 
+    public String getTargetUUID() {
+        return this.targetUUID;
+    }
+
+    public void setTargetUUID(String targetUUID) {
+        this.targetUUID = targetUUID;
+    }
+
     public String getMessageUUID() {
         return this.messageUUID;
     }
@@ -104,5 +116,4 @@ public class MessageSql {
     public void setTimeSend(long timeSend) {
         this.timeSend = timeSend;
     }
-
   }

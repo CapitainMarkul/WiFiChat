@@ -21,7 +21,9 @@ public class ConfigIntent {
     public final static String DISCOVERY_TARGET_ID = "DISCOVERY_TARGET_ID";
     public final static String DISCOVERY_TARGET_NAME = "DISCOVERY_TARGET_NAME";
     public final static String DISCOVERY_TARGET_IS_LOST = "DISCOVERY_TARGET_IS_LOST";
-//
+
+    public final static String UPDATED_CLIENTS = "UPDATED_CLIENTS";
+    //
     public final static String CONNECTION_TARGET_ID = "CONNECTION_TARGET_ID";
     public final static String CONNECTION_TARGET_NAME = "CONNECTION_TARGET_NAME";
     public final static String CONNECTION_TARGET_UUID = "CONNECTION_TARGET_UUID";

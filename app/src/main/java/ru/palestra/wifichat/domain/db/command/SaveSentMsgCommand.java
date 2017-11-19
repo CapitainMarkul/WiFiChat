@@ -20,6 +20,12 @@ public class SaveSentMsgCommand implements DbCommand<MessageSql> {
         synchronized (DaoSession.class) {
             final MessageSqlDao messageSqlDao = daoSession.getMessageSqlDao();
 
+            MessageSql messageSql = messageSqlDao.queryBuilder()
+                    .where(MessageSqlDao.Properties.MessageUUID.eq(sentMessageSql.getMessageUUID()))
+                    .unique();
+
+            if(messageSql != null) return messageSql;
+
             messageSqlDao.insert(sentMessageSql);
             return sentMessageSql;
         }

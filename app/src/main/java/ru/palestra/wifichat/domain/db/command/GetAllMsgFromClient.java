@@ -1,5 +1,7 @@
 package ru.palestra.wifichat.domain.db.command;
 
+import org.greenrobot.greendao.query.QueryBuilder;
+
 import java.util.List;
 
 import ru.palestra.wifichat.data.models.daomodels.DaoSession;
@@ -11,9 +13,11 @@ import ru.palestra.wifichat.data.models.daomodels.MessageSqlDao;
  */
 
 public class GetAllMsgFromClient implements DbCommand<List<MessageSql>> {
+    private final String myUUID;
     private final String senderUUID;
 
-    public GetAllMsgFromClient(String senderUUID) {
+    public GetAllMsgFromClient(String myUUID, String senderUUID) {
+        this.myUUID = myUUID;
         this.senderUUID = senderUUID;
     }
 
@@ -22,9 +26,16 @@ public class GetAllMsgFromClient implements DbCommand<List<MessageSql>> {
         synchronized (DaoSession.class) {
             final MessageSqlDao messageSqlDao = daoSession.getMessageSqlDao();
 
-            return messageSqlDao.queryBuilder()
-                    .where(MessageSqlDao.Properties.FromUUID.eq(senderUUID))
-                    .list();
+            // TODO: 19.11.2017 все UUID от меня этому чуваку и мне от этого чувака
+
+            QueryBuilder<MessageSql> qb = messageSqlDao.queryBuilder();
+//            qb.where(MessageSqlDao.Properties.FromUUID.eq(senderUUID));
+//            qb.where(MessageSqlDao.Properties.FromUUID.eq(senderUUID),
+            qb.or(MessageSqlDao.Properties.FromUUID.eq(senderUUID),
+                    MessageSqlDao.Properties.TargetUUID.eq(senderUUID));
+            qb.orderAsc(MessageSqlDao.Properties.TimeSend);
+
+            return qb.list();
         }
     }
 }

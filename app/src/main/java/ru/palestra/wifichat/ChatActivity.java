@@ -21,6 +21,7 @@ import ru.palestra.wifichat.data.models.viewmodels.Message;
 import ru.palestra.wifichat.databinding.ActivityChatBinding;
 import ru.palestra.wifichat.services.NearbyService;
 import ru.palestra.wifichat.utils.ConfigIntent;
+import ru.palestra.wifichat.utils.CreateUiListUtil;
 
 /**
  * Created by Dmitry on 16.11.2017.
@@ -68,32 +69,12 @@ public class ChatActivity extends AppCompatActivity {
             uiListMessages.clear();
             uiListMessages.addAll(messagesAdapter.getMessages());
 
-            messagesAdapter.updateMessages(createUiList(message));
+            messagesAdapter.updateMessages(CreateUiListUtil.createUiMessagesList(uiListMessages, message));
             scrollToBottom();
         }
     };
 
-    private List<Message> createUiList(Message newMessage) {
-        Message[] oldMessagesArray = new Message[uiListMessages.size()];
-        oldMessagesArray = uiListMessages.toArray(oldMessagesArray);
 
-        if (!uiListMessages.contains(newMessage)) {
-            for (Message oldMessage : oldMessagesArray) {
-                if (oldMessage.getMsgUUID().equals(newMessage.getMsgUUID())) {
-                    //Обновляем сообщение
-                    int removedIndex = uiListMessages.indexOf(oldMessage);
-
-                    uiListMessages.remove(removedIndex);
-                    uiListMessages.add(removedIndex, newMessage);
-
-                    return uiListMessages;
-                }
-            }
-            //Если это новое сообщение
-            uiListMessages.add(newMessage);
-        }
-        return uiListMessages;
-    }
 
     private View.OnClickListener sendMessageListener = view -> {
         Message sendMessage =
@@ -106,7 +87,7 @@ public class ChatActivity extends AppCompatActivity {
         uiListMessages.clear();
         uiListMessages.addAll(messagesAdapter.getMessages());
 
-        messagesAdapter.updateMessages(createUiList(sendMessage));
+        messagesAdapter.updateMessages(CreateUiListUtil.createUiMessagesList(uiListMessages, sendMessage));
         scrollToBottom();
         binding.textMessage.setText("");
     };

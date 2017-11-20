@@ -23,28 +23,19 @@ public abstract class Message implements Serializable {
 
     @Nullable
     public abstract String getFromName();
-
     @Nullable
     public abstract String getFromUUID();
-
     @Nullable
     public abstract String getTargetId();
-
     @Nullable
     public abstract String getTargetUUID();
-
     @Nullable
     public abstract String getText();
-
     public abstract String getMsgUUID();
-
     public abstract Long getTimeSend();
-
     public abstract boolean isDelivered();  //доставлено/не доставлено
-
     @Nullable
     public abstract Message getDeliveredMsg(); //чтение доставленного сообщения
-
     public abstract boolean isPingPongTypeMsg();
 
     static Builder builder() {
@@ -54,25 +45,15 @@ public abstract class Message implements Serializable {
     @AutoValue.Builder
     abstract static class Builder {
         abstract Builder setFromName(String name);
-
         abstract Builder setFromUUID(String UUID);
-
         abstract Builder setTargetId(String id);
-
         abstract Builder setTargetUUID(String UUID);
-
         abstract Builder setText(String text);
-
         abstract Builder setMsgUUID(String UUID);
-
         abstract Builder setTimeSend(Long time);
-
         abstract Builder setDelivered(boolean isDelivered);
-
         abstract Builder setDeliveredMsg(Message message);
-
         abstract Builder setPingPongTypeMsg(boolean isPingPong);
-
         abstract Message build();
     }
 

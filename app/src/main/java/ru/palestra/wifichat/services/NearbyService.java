@@ -655,10 +655,10 @@ public class NearbyService extends Service {
                 sendMessageSendMessageServiceTimer.cancel();
             sendMessageSendMessageServiceTimer = new SendMessageServiceTimer();
 
-            //Попытка коннекта каждые 10 секунд
+            //Попытка коннекта, отправка сообщений каждые 5 секунд
             timerSendMessage.schedule(
                     sendMessageSendMessageServiceTimer,
-                    TimeUnit.SECONDS.toMillis(10));
+                    TimeUnit.SECONDS.toMillis(5));
         }
     }
 

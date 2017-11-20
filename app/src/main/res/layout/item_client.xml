@@ -23,12 +23,12 @@
             android:textStyle="bold"
             tools:text="Client Name"/>
 
-        <include
-            android:id="@+id/item_message"
-            layout="@layout/item_message"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:layout_alignParentBottom="true"
-            android:layout_below="@+id/txt_client_name"/>
+        <!--<include-->
+            <!--android:id="@+id/item_message"-->
+            <!--layout="@layout/item_message"-->
+            <!--android:layout_width="wrap_content"-->
+            <!--android:layout_height="match_parent"-->
+            <!--android:layout_alignParentBottom="true"-->
+            <!--android:layout_below="@+id/txt_client_name"/>-->
     </RelativeLayout>
 </layout>

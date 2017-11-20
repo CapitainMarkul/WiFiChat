@@ -8,6 +8,7 @@ import java.util.List;
 
 import ru.palestra.wifichat.data.models.mappers.ClientMapper;
 import ru.palestra.wifichat.data.models.viewmodels.Client;
+import ru.palestra.wifichat.data.models.viewmodels.Message;
 import ru.palestra.wifichat.domain.db.DbClient;
 
 /**
@@ -40,6 +41,28 @@ public class CreateUiListUtil {
 
     public static ArrayList<Client> getUiClients() {
         return (ArrayList<Client>) uiClients;
+    }
+
+    public static List<Message> createUiMessagesList(List<Message> uiListMessages, Message newMessage) {
+        Message[] oldMessagesArray = new Message[uiListMessages.size()];
+        oldMessagesArray = uiListMessages.toArray(oldMessagesArray);
+
+        if (!uiListMessages.contains(newMessage)) {
+            for (Message oldMessage : oldMessagesArray) {
+                if (oldMessage.getMsgUUID().equals(newMessage.getMsgUUID())) {
+                    //Обновляем сообщение
+                    int removedIndex = uiListMessages.indexOf(oldMessage);
+
+                    uiListMessages.remove(removedIndex);
+                    uiListMessages.add(removedIndex, newMessage);
+
+                    return uiListMessages;
+                }
+            }
+            //Если это новое сообщение
+            uiListMessages.add(newMessage);
+        }
+        return uiListMessages;
     }
 
     private static List<Client> updateUiList(List<Client> connectedClients) {

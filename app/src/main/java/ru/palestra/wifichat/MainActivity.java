@@ -111,7 +111,6 @@ public class MainActivity extends AppCompatActivity {
         Logger.debugLog(String.format("Start chat: %s - %s",
                 client.getName(), client.getNearbyKey()));
 
-        // TODO: 16.11.2017 Create New Chat Goto New Activity
         startActivity(
                 new Intent(this, ChatActivity.class)
                         .putExtra(ConfigIntent.CONNECTION_TARGET_ID, client.getNearbyKey())

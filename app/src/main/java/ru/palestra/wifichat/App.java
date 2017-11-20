@@ -74,7 +74,6 @@ public class App extends Application {
         return dbClientInstance;
     }
 
-    // TODO: 16.11.2017 Данные Callback'и можно удалить
     GoogleApiClient.ConnectionCallbacks connectionCallbacks = new GoogleApiClient.ConnectionCallbacks() {
         @Override
         public void onConnected(@Nullable Bundle bundle) {

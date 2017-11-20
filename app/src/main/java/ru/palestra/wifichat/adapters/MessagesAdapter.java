@@ -11,6 +11,7 @@ import android.view.ViewGroup;
 import org.threeten.bp.LocalDateTime;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import ru.palestra.wifichat.R;
@@ -36,11 +37,29 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.ViewHo
                 DiffUtil.calculateDiff(new MessageDiffUtil(this.messages, messages));
         this.messages.clear();
         this.messages.addAll(messages);
+
+        sortMessages();
+
         diffResult.dispatchUpdatesTo(this);
     }
 
-    public List<Message> getMessages(){
+    public List<Message> getMessages() {
         return messages;
+    }
+
+    private void sortMessages() {
+        Collections.sort(messages, (message1, message2) -> {
+            LocalDateTime dateMessage1 = TimeUtils.longToLocalDateTime(message1.getTimeSend());
+            LocalDateTime dateMessage2 = TimeUtils.longToLocalDateTime(message2.getTimeSend());
+
+            if (dateMessage1.isAfter(dateMessage2)) {
+                return 1;
+            } else if (dateMessage1.isEqual(dateMessage2)) {
+                return 0;
+            } else {
+                return -1;
+            }
+        });
     }
 
     @Override

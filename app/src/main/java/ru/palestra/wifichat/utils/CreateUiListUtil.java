@@ -46,8 +46,6 @@ public class CreateUiListUtil {
         Client[] oldClientArray = new Client[uiClients.size()];
         oldClientArray = uiClients.toArray(oldClientArray);
 
-
-// TODO: 20.11.2017 Проверить, это совсем новый клиент?
         for (Client newClient : connectedClients) {
             boolean isNewClient = true;
             for (Client oldClient : oldClientArray) {

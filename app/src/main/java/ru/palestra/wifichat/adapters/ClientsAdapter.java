@@ -39,11 +39,6 @@ public class ClientsAdapter extends RecyclerView.Adapter<ClientsAdapter.ViewHold
 
     private boolean isNewClient(Client client) {
         return !clients.contains(client);
-//        for (ClientMessageWrap client : clients) {
-//            if (client.getClient().equals(clientMessageWrap.getClient())) return false;
-//        }
-//// TODO: 17.11.2017 Хз
-//        return true;
     }
 
     public void updateClients(List<Client> newClients) {

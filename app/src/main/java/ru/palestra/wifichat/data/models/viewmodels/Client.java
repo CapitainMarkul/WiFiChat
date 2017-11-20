@@ -51,7 +51,7 @@ public abstract class Client implements Parcelable {
         return Client.builder()
                 .setName(name)
                 .setNearbyKey(nearbyKey)
-                .setUUID(UUID)  // TODO: 17.11.2017 Убрать? Передалать маппер
+                .setUUID(UUID)
                 .setOnline(false)
                 .build();
     }

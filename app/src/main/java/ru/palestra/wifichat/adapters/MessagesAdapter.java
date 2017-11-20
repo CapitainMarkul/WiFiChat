@@ -35,6 +35,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.ViewHo
     public void updateMessages(List<Message> messages) {
         DiffUtil.DiffResult diffResult =
                 DiffUtil.calculateDiff(new MessageDiffUtil(this.messages, messages));
+
         this.messages.clear();
         this.messages.addAll(messages);
 

@@ -17,10 +17,8 @@ import ru.palestra.wifichat.domain.db.DbClient;
 
 public class CreateUiListUtil {
     private static List<Client> uiClients = new ArrayList<>(); //Лист, для отображения
-    private final DbClient dbClient;
 
     private CreateUiListUtil(@NonNull DbClient dbClient) {
-        this.dbClient = dbClient;
 
         //Заружаем оффлайн список клиентов
         uiClients =
@@ -32,11 +30,33 @@ public class CreateUiListUtil {
     }
 
     public static void clientConnected(String idEndPoint, Client client) {
-        updateUiList(Collections.singletonList(Client.isOnline(idEndPoint, client)));
+        updateUiClientsList(Collections.singletonList(Client.isOnline(idEndPoint, client)));
     }
 
     public static void clientDisconnect(Client client) {
-        updateUiList(Collections.singletonList(Client.isOffline(client)));
+        updateUiClientsList(Collections.singletonList(Client.isOffline(client)));
+    }
+
+    private static void updateUiClientsList(List<Client> connectedClients) {
+        Client[] oldClientArray = new Client[uiClients.size()];
+        oldClientArray = uiClients.toArray(oldClientArray);
+
+        for (Client newClient : connectedClients) {
+            boolean isNewClient = true;
+            for (Client oldClient : oldClientArray) {
+                if (oldClient.getUUID().equals(newClient.getUUID()) &&
+                        oldClient.isOnline() != newClient.isOnline()) {
+                    uiClients.remove(oldClient);
+                    uiClients.add(newClient);
+                    isNewClient = false;
+                    break;
+                }
+            }
+
+            if (isNewClient) {
+                uiClients.add(newClient);
+            }
+        }
     }
 
     public static ArrayList<Client> getUiClients() {
@@ -63,29 +83,5 @@ public class CreateUiListUtil {
             uiListMessages.add(newMessage);
         }
         return uiListMessages;
-    }
-
-    private static List<Client> updateUiList(List<Client> connectedClients) {
-        Client[] oldClientArray = new Client[uiClients.size()];
-        oldClientArray = uiClients.toArray(oldClientArray);
-
-        for (Client newClient : connectedClients) {
-            boolean isNewClient = true;
-            for (Client oldClient : oldClientArray) {
-                if (oldClient.getUUID().equals(newClient.getUUID()) &&
-                        oldClient.isOnline() != newClient.isOnline()) {
-                    uiClients.remove(oldClient);
-                    uiClients.add(newClient);
-                    isNewClient = false;
-                    break;
-                }
-            }
-
-            if (isNewClient) {
-                uiClients.add(newClient);
-            }
-        }
-
-        return uiClients;
     }
 }

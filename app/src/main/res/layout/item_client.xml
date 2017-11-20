@@ -9,11 +9,12 @@
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="55dp"
+        android:layout_marginBottom="5dp"
         android:paddingEnd="15dp"
         android:paddingLeft="15dp"
         android:paddingRight="15dp"
         android:paddingStart="15dp"
-        tools:background="@color/colorAccent">
+        tools:background="@drawable/client_online_background">
 
         <TextView
             android:id="@+id/txt_client_name"
@@ -24,11 +25,11 @@
             tools:text="Client Name"/>
 
         <!--<include-->
-            <!--android:id="@+id/item_message"-->
-            <!--layout="@layout/item_message"-->
-            <!--android:layout_width="wrap_content"-->
-            <!--android:layout_height="match_parent"-->
-            <!--android:layout_alignParentBottom="true"-->
-            <!--android:layout_below="@+id/txt_client_name"/>-->
+        <!--android:id="@+id/item_message"-->
+        <!--layout="@layout/item_message"-->
+        <!--android:layout_width="wrap_content"-->
+        <!--android:layout_height="match_parent"-->
+        <!--android:layout_alignParentBottom="true"-->
+        <!--android:layout_below="@+id/txt_client_name"/>-->
     </RelativeLayout>
 </layout>

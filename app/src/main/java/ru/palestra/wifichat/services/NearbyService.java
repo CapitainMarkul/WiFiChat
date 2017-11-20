@@ -362,7 +362,7 @@ public class NearbyService extends Service {
     private void responseFromClient(Message message, String idEndPoint) {
         if (isPingPongMsg(message, idEndPoint)) ;
         else if (isDeliveredMessage(message, idEndPoint)) ;
-        else if (isMsgForMe(message)) ;
+        else if (isMsgForMe(message, idEndPoint)) ;
         else if (isBroadcastMSG(message)) ;
         else {
             if (!lostMessages.contains(message)) {
@@ -370,7 +370,6 @@ public class NearbyService extends Service {
             }
         }
     }
-
 
     private boolean isPingPongMsg(Message message, String idEndPoint) {
         if (message.getState() != Message.State.PING_PONG_MESSAGE) return false;
@@ -413,17 +412,17 @@ public class NearbyService extends Service {
         return true;
     }
 
-    private boolean isMsgForMe(Message message) {
+    private boolean isMsgForMe(Message message, String idEndPoint) {
         String targetUUID = message.getTargetUUID();
         if (targetUUID != null && !targetUUID.equals(myDevice.getUUID())) return false;
 
-        //Если у нас сменился Id, то сообщение доставить нам можно только по нашему UUID,
-        //если это произошло, то отправляем сообщение, что не нужно нас искать
+        Message deliveredMessage =
+                Message.deliveredMessage(myDevice.getName(), myDevice.getUUID(), message);
 
-        //Если сообщение нам
-        // TODO: 14.11.2017 Save Message, Update Ui
-        deliveredLostMessages.add(
-                Message.deliveredMessage(myDevice.getName(), myDevice.getUUID(), message));
+        //Для увеличения скорости работы (визуальной), ответ отправителю даем незамедлительно
+        sendTargetMessage(deliveredMessage, idEndPoint);
+        putClientInBanList(deliveredMessage, idEndPoint);
+        deliveredLostMessages.add(deliveredMessage);
 
         updateMessageAdapter(message);
         dbClient.saveSentMsg(

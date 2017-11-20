@@ -1,5 +1,6 @@
 package ru.palestra.wifichat.adapters;
 
+import android.content.Context;
 import android.databinding.DataBindingUtil;
 import android.graphics.Color;
 import android.support.v7.util.DiffUtil;
@@ -9,6 +10,7 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import ru.palestra.wifichat.R;
@@ -47,8 +49,22 @@ public class ClientsAdapter extends RecyclerView.Adapter<ClientsAdapter.ViewHold
 
         this.clients.clear();
         this.clients.addAll(newClients);
+
+        sortClients();
+
         diffResult.dispatchUpdatesTo(this);
-        notifyDataSetChanged(); // TODO: 18.11.2017 Исправить diffUtil
+    }
+
+    private void sortClients() {
+        Collections.sort(clients, (client1, client2) -> {
+            if (!client1.isOnline() && client2.isOnline()) {
+                return 1;
+            } else if (client1.isOnline() && !client2.isOnline()) {
+                return -1;
+            } else {
+                return 0;
+            }
+        });
     }
 
     public List<Client> getAllClients() {
@@ -80,9 +96,9 @@ public class ClientsAdapter extends RecyclerView.Adapter<ClientsAdapter.ViewHold
         holder.binding.txtClientName.setText(client.getName());
 
         if (client.isOnline()) {
-            holder.itemView.setBackgroundColor(Color.GREEN);
+            holder.itemView.setBackground(holder.context.getResources().getDrawable(R.drawable.client_online_background));
         } else {
-            holder.itemView.setBackgroundColor(Color.GRAY);
+            holder.itemView.setBackground(holder.context.getResources().getDrawable(R.drawable.client_offline_background));
         }
 
         holder.itemView.setOnClickListener(view -> listener.onItemClick(clients.get(position)));
@@ -94,10 +110,12 @@ public class ClientsAdapter extends RecyclerView.Adapter<ClientsAdapter.ViewHold
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
+        private Context context;
         private ItemClientBinding binding;
 
         public ViewHolder(View itemView) {
             super(itemView);
+            context = itemView.getContext();
             binding = DataBindingUtil.bind(itemView);
         }
     }

@@ -27,8 +27,13 @@ public class GetAllMsgFromClient implements DbCommand<List<MessageSql>> {
             final MessageSqlDao messageSqlDao = daoSession.getMessageSqlDao();
 
             QueryBuilder<MessageSql> qb = messageSqlDao.queryBuilder();
-            qb.or(MessageSqlDao.Properties.FromUUID.eq(senderUUID),
-                    MessageSqlDao.Properties.TargetUUID.eq(senderUUID));
+            qb.where(
+                    qb.or(qb.and(
+                            MessageSqlDao.Properties.FromUUID.eq(senderUUID),
+                            MessageSqlDao.Properties.TargetUUID.eq(myUUID)),
+                            qb.and(
+                                    MessageSqlDao.Properties.FromUUID.eq(myUUID),
+                                    MessageSqlDao.Properties.TargetUUID.eq(senderUUID))));
             qb.orderAsc(MessageSqlDao.Properties.TimeSend);
 
             return qb.list();

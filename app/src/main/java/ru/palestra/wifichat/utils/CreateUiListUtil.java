@@ -46,14 +46,22 @@ public class CreateUiListUtil {
         Client[] oldClientArray = new Client[uiClients.size()];
         oldClientArray = uiClients.toArray(oldClientArray);
 
-        for (Client oldClient : oldClientArray) {
-            for (Client newClient : connectedClients) {
-                if (oldClient.isOnline() != newClient.isOnline()) {
+
+// TODO: 20.11.2017 Проверить, это совсем новый клиент?
+        for (Client newClient : connectedClients) {
+            boolean isNewClient = true;
+            for (Client oldClient : oldClientArray) {
+                if (oldClient.getUUID().equals(newClient.getUUID()) &&
+                        oldClient.isOnline() != newClient.isOnline()) {
                     uiClients.remove(oldClient);
                     uiClients.add(newClient);
-
+                    isNewClient = false;
                     break;
                 }
+            }
+
+            if (isNewClient) {
+                uiClients.add(newClient);
             }
         }
 

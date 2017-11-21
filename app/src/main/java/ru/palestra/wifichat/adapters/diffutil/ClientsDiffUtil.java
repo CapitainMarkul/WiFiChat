@@ -5,6 +5,7 @@ import android.support.v7.util.DiffUtil;
 import java.util.List;
 
 import ru.palestra.wifichat.data.models.viewmodels.Client;
+import ru.palestra.wifichat.utils.Logger;
 
 /**
  * Created by Dmitry on 18.11.2017.
@@ -40,6 +41,7 @@ public class ClientsDiffUtil extends DiffUtil.Callback {
     public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
         Client oldClient = oldList.get(oldItemPosition);
         Client newClient = newList.get(newItemPosition);
+        Logger.errorLog(String.valueOf(oldClient.isOnline() != newClient.isOnline()));
         return oldClient.isOnline() != newClient.isOnline();
     }
 }

@@ -30,11 +30,16 @@ public class CreateUiListUtil {
     }
 
     public static void clientConnected(String idEndPoint, Client client) {
-        updateUiClientsList(Collections.singletonList(Client.isOnline(idEndPoint, client)));
+        client.setNearbyKey(idEndPoint);
+        client.setOnline(true);
+
+        updateUiClientsList(Collections.singletonList(client));
     }
 
     public static void clientDisconnect(Client client) {
-        updateUiClientsList(Collections.singletonList(Client.isOffline(client)));
+        client.setOnline(false);
+
+        updateUiClientsList(Collections.singletonList(client));
     }
 
     private static void updateUiClientsList(List<Client> connectedClients) {

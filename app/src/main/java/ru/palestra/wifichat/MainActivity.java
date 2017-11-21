@@ -8,17 +8,21 @@ import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.databinding.DataBindingUtil;
 import android.os.Bundle;
+import android.os.Parcelable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 
+import org.parceler.Parcels;
+
 import java.util.List;
 
 import ru.palestra.wifichat.adapters.ClientsAdapter;
 import ru.palestra.wifichat.data.models.mappers.ClientMapper;
 import ru.palestra.wifichat.data.models.viewmodels.Client;
+import ru.palestra.wifichat.data.models.viewmodels.Message;
 import ru.palestra.wifichat.databinding.ActivityMainBinding;
 import ru.palestra.wifichat.services.NearbyService;
 import ru.palestra.wifichat.utils.ConfigIntent;
@@ -67,7 +71,7 @@ public class MainActivity extends AppCompatActivity {
     BroadcastReceiver acceptConnectionToClientReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            List<Client> clients = intent.getParcelableArrayListExtra(ConfigIntent.UPDATED_CLIENTS);
+            List<Client> clients = Parcels.unwrap(intent.getParcelableExtra(ConfigIntent.UPDATED_CLIENTS));
             clientsAdapter.updateClients(clients);
         }
     };

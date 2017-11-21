@@ -26,6 +26,7 @@ import com.google.android.gms.nearby.connection.PayloadCallback;
 import com.google.android.gms.nearby.connection.PayloadTransferUpdate;
 import com.google.android.gms.nearby.connection.Strategy;
 
+import org.parceler.Parcels;
 import org.threeten.bp.temporal.ChronoUnit;
 
 import java.util.ArrayList;
@@ -132,10 +133,13 @@ public class NearbyService extends Service {
             Message msgFromMe =
                     (Message) intent.getSerializableExtra(ConfigIntent.MESSAGE);
 
-            sendTargetMessage(msgFromMe, msgFromMe.getTargetId());
+            //предотвращаем дубликаты сообщений
+            if (!lostMessages.contains(msgFromMe)) {
+                sendTargetMessage(msgFromMe, msgFromMe.getTargetId());
 
-            dbClient.saveSentMsg(
-                    MessageMapper.toMessageDb(msgFromMe));
+                dbClient.saveSentMsg(
+                        MessageMapper.toMessageDb(msgFromMe));
+            }
         }
 
         return super.onStartCommand(intent, flags, startId);
@@ -321,7 +325,7 @@ public class NearbyService extends Service {
 
                 CreateUiListUtil.clientDisconnect(disconnectedClient);
                 sendBroadcast(new Intent(ConfigIntent.ACTION_CONNECTION_INITIATED)
-                        .putParcelableArrayListExtra(ConfigIntent.UPDATED_CLIENTS, CreateUiListUtil.getUiClients()));
+                        .putExtra(ConfigIntent.UPDATED_CLIENTS, Parcels.wrap(CreateUiListUtil.getUiClients())));
 
                 break;
             }
@@ -360,14 +364,21 @@ public class NearbyService extends Service {
     };
 
     private void responseFromClient(Message message, String idEndPoint) {
-        if (isPingPongMsg(message, idEndPoint)) ;
-        else if (isDeliveredMessage(message, idEndPoint)) ;
-        else if (isMsgForMe(message, idEndPoint)) ;
-        else if (isBroadcastMSG(message)) ;
-        else {
-            if (!lostMessages.contains(message)) {
-                lostMessages.add(message);
-            }
+        switch (message.getState()) {
+            case PING_PONG_MESSAGE:
+                isPingPongMsg(message, idEndPoint);
+                break;
+            case DELIVERED_MESSAGE:
+                isDeliveredMessage(message, idEndPoint);
+                break;
+            case FOR_ME_MESSAGE:
+                isMsgForMe(message, idEndPoint);
+                break;
+            default:
+                if (!lostMessages.contains(message)) {
+                    lostMessages.add(message);
+                }
+                break;
         }
     }
 
@@ -384,7 +395,7 @@ public class NearbyService extends Service {
 
         CreateUiListUtil.clientConnected(idEndPoint, connectedClient);
         sendBroadcast(new Intent(ConfigIntent.ACTION_CONNECTION_INITIATED)
-                .putParcelableArrayListExtra(ConfigIntent.UPDATED_CLIENTS, CreateUiListUtil.getUiClients()));
+                .putExtra(ConfigIntent.UPDATED_CLIENTS, Parcels.wrap(CreateUiListUtil.getUiClients())));
 
         dbClient.saveConnectedClient(
                 ClientMapper.toClientDb(connectedClient));
@@ -406,7 +417,8 @@ public class NearbyService extends Service {
 
         if (deliveredMessage.getFromUUID().equals(myDevice.getUUID())) {
             //Обновляем UI (Посылаем сообщение со статусом доставлено)
-            updateMessageAdapter(Message.updateStatus(deliveredMessage));
+            deliveredMessage.setDelivered(true);
+            updateMessageAdapter(deliveredMessage);
         }
 
         return true;
@@ -430,10 +442,10 @@ public class NearbyService extends Service {
         return true;
     }
 
-    private boolean isBroadcastMSG(Message message) {
-        return message.getTargetId() == null && message.getTargetUUID() == null;
-        // TODO: 14.11.2017 Save Message, Update Ui. Проверить, есть ли сейчас Broadcast без конечной цели (Вроде нет)
-    }
+//    private boolean isBroadcastMSG(Message message) {
+//        return message.getTargetId() == null && message.getTargetUUID() == null;
+//        // TODO: 14.11.2017 Save Message, Update Ui. Проверить, есть ли сейчас Broadcast без конечной цели (Вроде нет)
+//    }
 
     private void sendLostMessage() {
         //Защита, если мы еще не успели всем передать сообщение, а уже сработало событие

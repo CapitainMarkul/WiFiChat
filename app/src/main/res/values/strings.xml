@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Wi-Fi_DirectChat</string>
+
+    <string name="message_resend">Повтор отправки сообщения</string>
 </resources>

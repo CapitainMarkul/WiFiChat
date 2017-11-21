@@ -15,11 +15,23 @@ public class MessageMapper {
 
     }
 
+    public static Message toViewMessage(MessageSql messageSql) {
+        return new Message()
+                .setFromName(messageSql.getFromName())
+                .setFromUUID(messageSql.getFromUUID())
+                .setTargetUUID(messageSql.getTargetUUID())
+                .setText(messageSql.getText())
+                .setMsgUUID(messageSql.getMessageUUID())
+                .setTimeSend(messageSql.getTimeSend())
+                .setDelivered(messageSql.getStatusDelivered())
+                .setPingPongTypeMsg(false);
+    }
+
     public static List<Message> toListMessageView(List<MessageSql> messageSqls) {
         List<Message> messages = new ArrayList<>();
 
         for (MessageSql messageSql : messageSqls) {
-            messages.add(Message.toViewMessage(messageSql));
+            messages.add(toViewMessage(messageSql));
         }
         return messages;
     }

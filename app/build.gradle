@@ -40,17 +40,12 @@ dependencies {
     //ThreetenTime
     implementation threeTen.threeTen
 
-    //AutoValue
-    compileOnly autoValue.autoValue
-    annotationProcessor autoValue.autoValue
-    annotationProcessor autoValue.autoValueParcel
-
     //Nearby
     implementation support.nearby
 
     //Parceller
-//    implementation parceller.parceller
-//    annotationProcessor parceller.parceller
+    implementation parceller.parceller
+    annotationProcessor parceller.parcellerAnnotProc
 
     //Support
     implementation support.appcompat7

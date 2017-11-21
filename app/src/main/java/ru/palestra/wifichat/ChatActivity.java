@@ -10,6 +10,7 @@ import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.view.View;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -75,7 +76,6 @@ public class ChatActivity extends AppCompatActivity {
     };
 
 
-
     private View.OnClickListener sendMessageListener = view -> {
         Message sendMessage =
                 Message.newMessage(myDevice.getName(), myDevice.getUUID(), targetNearbyId, targetUUID, binding.textMessage.getText().toString());
@@ -101,7 +101,8 @@ public class ChatActivity extends AppCompatActivity {
 
         messagesAdapter = new MessagesAdapter();
         messagesAdapter.setCurrentDevice(
-                App.sharedPreference().getInfoAboutMyDevice().getName());
+                App.sharedPreference().getInfoAboutMyDevice().getUUID());
+        messagesAdapter.setResendOnClick(resendOnClickListener);
 
         //Load Old Messages
         messagesAdapter.updateMessages(
@@ -110,6 +111,20 @@ public class ChatActivity extends AppCompatActivity {
 
         binding.rvChatMessages.setAdapter(messagesAdapter);
     }
+
+    private MessagesAdapter.ResendOnClick resendOnClickListener = message -> {
+        startService(
+                new Intent(this, NearbyService.class)
+                        .putExtra(ConfigIntent.MESSAGE, message));
+
+        uiListMessages.remove(message);
+
+        Message reSendMessage = Message.reSendMessage(message);
+        uiListMessages.add(reSendMessage);
+        CreateUiListUtil.createUiMessagesList(uiListMessages, reSendMessage);
+
+        Toast.makeText(this, R.string.message_resend, Toast.LENGTH_SHORT).show();
+    };
 
     private void scrollToBottom() {
         binding.rvChatMessages.scrollToPosition(messagesAdapter.getItemCount() - 1);

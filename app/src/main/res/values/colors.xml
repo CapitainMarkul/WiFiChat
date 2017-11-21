@@ -3,4 +3,9 @@
     <color name="colorPrimary">#3F51B5</color>
     <color name="colorPrimaryDark">#303F9F</color>
     <color name="colorAccent">#FF4081</color>
+
+    <color name="background_my_message">#E1D9C6</color>
+    <color name="background_not_my_message">#e6ffff</color>
+
+    <color name="background_border_message">#506A79</color>
 </resources>

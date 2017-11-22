@@ -59,9 +59,9 @@ import ru.palestra.wifichat.utils.CreateUiListUtil;
 public class NearbyService extends Service {
     private static final String TAG = NearbyService.class.getSimpleName() + "_SERVICE";
 
-    private static final int TIME_DISCOVERY = 5;
+    private static final int TIME_DISCOVERY = 3;
     private static final int TIME_RESTART_ADVERTISING = 30;
-    private static final int TIME_WAIT_DISCOVERY = 10;
+    private static final int TIME_WAIT_DISCOVERY = 8;
     private static final int TIME_RESEND_MSG = 5;
 
 
@@ -292,7 +292,7 @@ public class NearbyService extends Service {
                 connectionLifecycleCallback
         ).setResultCallback(status -> {
             if (status.isSuccess()) {
-                removePotentialClient(potentialClient);
+//                removePotentialClient(potentialClient);
                 requestedClients.remove(potentialClient);
             } else {
                 Logger.errorLog(String.format("Error request connection: %s : %s", status.getStatus(), potentialClient.getNearbyKey()));

@@ -59,9 +59,11 @@ import ru.palestra.wifichat.utils.CreateUiListUtil;
 public class NearbyService extends Service {
     private static final String TAG = NearbyService.class.getSimpleName() + "_SERVICE";
 
-    private static final int TIME_DISCOVERY = 4;
-    private static final int TIME_WAIT_DISCOVERY = 8;
+    private static final int TIME_DISCOVERY = 5;
+    private static final int TIME_RESTART_ADVERTISING = 30;
+    private static final int TIME_WAIT_DISCOVERY = 10;
     private static final int TIME_RESEND_MSG = 5;
+
 
     private static final int MSG_START_DISCOVERY = 1001;
     private static final int MSG_STOP_DISCOVERY = 1002;
@@ -88,7 +90,6 @@ public class NearbyService extends Service {
 
     private boolean isAdvertising;
     private boolean isDiscovering;
-    private boolean needStop;
 
     private List<Client> requestedClients = new ArrayList<>();  // те, кому мы кинули запрос
     private List<Client> connectedClients = new ArrayList<>();
@@ -158,7 +159,7 @@ public class NearbyService extends Service {
      * startAdvertising()
      * Запуск намерения стать точкой доступа
      */
-    private void startAdvertising() {
+    private synchronized void startAdvertising() {
         if (!isConnected()) return;
         Logger.debugLog("start Advertising");
         isAdvertising = true;
@@ -194,8 +195,7 @@ public class NearbyService extends Service {
      * startDiscovery()
      * Запуск поиска точек для соединения
      */
-    private void startDiscovery() {
-        if (needStop) return;
+    private synchronized void startDiscovery() {
         if (!isConnected()) return;
         Logger.debugLog("Start discovery");
         isDiscovering = true;
@@ -215,8 +215,7 @@ public class NearbyService extends Service {
      * stopDiscovery()
      * Прекращение поиска точек для соединения
      */
-    private void stopDiscovery() {
-        if (needStop) return;
+    private synchronized void stopDiscovery() {
         if (!isConnected()) return;
         Logger.debugLog("Stop discovery");
         isDiscovering = false;
@@ -269,28 +268,23 @@ public class NearbyService extends Service {
         Client[] potentialClientsArray = new Client[potentialClients.size()];
         potentialClientsArray = potentialClients.toArray(potentialClientsArray);
 
-        //Запрещает Discovery
-        stopDiscovery();
-        needStop = true;
-
         for (Client potentialClient : potentialClientsArray) {
             if (requestedClients.contains(potentialClient)) continue;
 
+            for (Client client : connectedClients) {
+                if (client.getNearbyKey().equals(potentialClient.getNearbyKey())) {
+                    return;
+                }
+            }
+
+            Logger.errorLog(String.format("Run request: %s : %s", potentialClient.getName(), potentialClient.getNearbyKey()));
+
             requestedClients.add(potentialClient);
             requestConnection(potentialClient);
-            // FIXME: 14.11.2017
-            // Можно добавить задержку (Проверить)
-            try {
-                Thread.sleep(250);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
         }
-        needStop = false;
-
     }
 
-    private void requestConnection(Client potentialClient) {
+    private synchronized void requestConnection(Client potentialClient) {
         Nearby.Connections.requestConnection(
                 App.googleApiClient(),
                 myDevice.getName(),
@@ -307,6 +301,8 @@ public class NearbyService extends Service {
                     removePotentialClient(potentialClient);
                 } else if (status.getStatus().toString().contains("STATUS_ALREADY_CONNECTED_TO_ENDPOINT")) {
                     removePotentialClient(potentialClient);
+                } else if (status.getStatus().toString().contains("STATUS_BLUETOOTH_ERROR")) {
+                    restartBluetooth();
                 } else if (status.getStatus().toString().contains("STATUS_ENDPOINT_IO_ERROR")) {
                     Nearby.Connections.disconnectFromEndpoint(App.googleApiClient(), potentialClient.getNearbyKey());
                 }
@@ -316,10 +312,26 @@ public class NearbyService extends Service {
         });
     }
 
+    private synchronized void restartBluetooth() {
+        stopAdvertising();
+        stopDiscovery();
+
+        startAdvertising();
+        startDiscovery();
+    }
+
     private ConnectionLifecycleCallback connectionLifecycleCallback = new ConnectionLifecycleCallback() {
         @Override
         public void onConnectionInitiated(String endPoint, ConnectionInfo connectionInfo) {
             Logger.debugLog("onConnectionInitiated: START!");
+
+            // FIXME: 14.11.2017
+            // Можно добавить задержку (Проверить)
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
 
             acceptConnection(connectionInfo.getEndpointName(), endPoint);
         }
@@ -503,7 +515,7 @@ public class NearbyService extends Service {
         }
     }
 
-    private void sendDeliveredMessage() {
+    private synchronized void sendDeliveredMessage() {
         //Защита, если мы еще не успели всем передать сообщение, а уже сработало событие
         if (sendingLostMessageComplete) {   //Lock.class ??
             sendingDeliveredMessageComplete = false;
@@ -564,12 +576,13 @@ public class NearbyService extends Service {
 
                         if (message.getTargetId() != null && message.getTargetId().equals(idEndPoint)) {
                             // TODO: 14.11.2017 Update Ui, что сообщение доставлено (пометочку сделать)
-
+                            message.setDelivered(true);
+                            updateMessageAdapter(message);
                         }
 
                         putClientInBanList(message, idEndPoint);
                     } else {
-                        Logger.debugLog("Send FAIL!!" + status.getStatus());
+                        Logger.errorLog("Send FAIL!!" + status.getStatus());
 
                         //На "Понг" сообщения нам должен ответить САМ получатель, иначе считаем, что контакт не был установлен
                         if (message.getState() == Message.State.PING_PONG_MESSAGE) return;
@@ -581,7 +594,7 @@ public class NearbyService extends Service {
                             lostMessages.add(
                                     Message.broadcastMessage(message.getFromName(), message.getFromUUID(), message.getTargetUUID(), message.getText(), message.getMsgUUID()));
 
-                            sendLostMessage();
+//                            sendLostMessage();
                         } else {
                             lostMessages.add(message);
                         }
@@ -613,8 +626,8 @@ public class NearbyService extends Service {
 
         for (Client connectedClient : connectedClients) {
             //Добавление нового клиента
-            if (connectedClient.getName().equals(newPotentialClient.getName()) &&
-                    connectedClient.getNearbyKey().equals(newPotentialClient.getNearbyKey())) {
+            if (connectedClient.getName().equals(newPotentialClient.getName())) {
+//                    connectedClient.getNearbyKey().equals(newPotentialClient.getNearbyKey())) {
                 return;
             }
         }

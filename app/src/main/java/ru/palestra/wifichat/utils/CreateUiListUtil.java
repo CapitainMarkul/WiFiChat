@@ -69,6 +69,10 @@ public class CreateUiListUtil {
         return (ArrayList<Client>) uiClients;
     }
 
+    public static void clearViewClients() {
+        uiClients.clear();
+    }
+
     public static List<Message> createUiMessagesList(List<Message> uiListMessages, Message newMessage) {
         Message[] oldMessagesArray = new Message[uiListMessages.size()];
         oldMessagesArray = uiListMessages.toArray(oldMessagesArray);

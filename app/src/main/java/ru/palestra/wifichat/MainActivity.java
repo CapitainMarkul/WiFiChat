@@ -14,6 +14,9 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.View;
 
 import org.parceler.Parcels;
 
@@ -48,16 +51,29 @@ public class MainActivity extends AppCompatActivity {
         checkPermission();
 
         setupClientsRecyclerView();
-        setupWasConnectedClients();
 
-        registerReceiver(acceptConnectionToClientReceiver, new IntentFilter(ConfigIntent.ACTION_CONNECTION_INITIATED));
         startServices();
     }
 
     @Override
     protected void onDestroy() {
-        stopServices();
         super.onDestroy();
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        registerReceiver(acceptConnectionToClientReceiver, new IntentFilter(ConfigIntent.ACTION_CONNECTION_INITIATED));
+        registerReceiver(searchingNewClients, new IntentFilter(ConfigIntent.ACTION_DISCOVERY));
+
+        setupWasConnectedClients();
+    }
+
+    @Override
+    protected void onStop() {
+        unregisterReceiver(acceptConnectionToClientReceiver);
+        unregisterReceiver(searchingNewClients);
+        super.onStop();
     }
 
     private void startServices() {
@@ -68,11 +84,25 @@ public class MainActivity extends AppCompatActivity {
         stopService(new Intent(this, NearbyService.class));
     }
 
-    BroadcastReceiver acceptConnectionToClientReceiver = new BroadcastReceiver() {
+    private BroadcastReceiver acceptConnectionToClientReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             List<Client> clients = Parcels.unwrap(intent.getParcelableExtra(ConfigIntent.UPDATED_CLIENTS));
             clientsAdapter.updateClients(clients);
+        }
+    };
+
+
+    private BroadcastReceiver searchingNewClients = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            boolean isDiscovery = intent.getBooleanExtra(ConfigIntent.STATUS_DISCOVERY, false);
+
+            if (isDiscovery) {
+                binding.progressDiscovery.setVisibility(View.VISIBLE);
+            } else {
+                binding.progressDiscovery.setVisibility(View.INVISIBLE);
+            }
         }
     };
 
@@ -102,24 +132,36 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
-    public void onBackPressed() {
-        new AlertDialog.Builder(this)
-                .setMessage("Уже уходите?")
-                .setNegativeButton("Нет", null)
-                .setPositiveButton("Ага", (arg0, arg1)
-                        -> MainActivity.super.onBackPressed())
-                .create().show();
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.default_menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.action_favorite:
+                new AlertDialog.Builder(this)
+                        .setMessage("Уже уходите?")
+                        .setNegativeButton("Нет", null)
+                        .setPositiveButton("Ага", (arg0, arg1)
+                                -> {
+                            stopServices();
+                            finish();
+                        })
+                        .create().show();
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
     }
 
     private ClientsAdapter.ItemClick itemClickListener = (client) -> {
         Logger.debugLog(String.format("Start chat: %s - %s",
                 client.getName(), client.getNearbyKey()));
 
-        startActivity(
-                new Intent(this, ChatActivity.class)
-                        .putExtra(ConfigIntent.CONNECTION_TARGET_ID, client.getNearbyKey())
-                        .putExtra(ConfigIntent.CONNECTION_TARGET_NAME, client.getName())
-                        .putExtra(ConfigIntent.CONNECTION_TARGET_UUID, client.getUUID()));
+        startActivity(new Intent(this, ChatActivity.class)
+                .putExtra(ConfigIntent.CONNECTION_TARGET_CLIENT, Parcels.wrap(client)));
     };
 
 
@@ -149,7 +191,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupWasConnectedClients() {
-        // FIXME: 18.11.2017 Работа с БД?
         clientsAdapter.updateClients(
                 ClientMapper.toListClientView(App.dbClient().getAllWasConnectedClients()));
     }

@@ -1,11 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#3F51B5</color>
-    <color name="colorPrimaryDark">#303F9F</color>
+    <color name="colorPrimary">#b9a679</color>
+    <color name="colorPrimaryLight">#e5ddcd</color>
+    <color name="colorPrimaryDark">#a78f58</color>
     <color name="colorAccent">#FF4081</color>
 
-    <color name="background_my_message">#E1D9C6</color>
-    <color name="background_not_my_message">#e6ffff</color>
+    <color name="background_my_message">#f6f4ee</color>
+    <color name="background_not_my_message">#e6f7ff</color>
 
     <color name="background_border_message">#506A79</color>
+
+    <color name="background_status_online">#00994d</color>
+    <color name="background_status_offline">#E1D9C6</color>
+    <color name="target_name">#645635</color>
 </resources>

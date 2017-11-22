@@ -9,8 +9,7 @@ import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.LinearLayout;
-import android.widget.RelativeLayout;
+import android.widget.FrameLayout;
 
 import org.threeten.bp.LocalDateTime;
 
@@ -48,13 +47,13 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.ViewHo
     }
 
     public void updateMessages(List<Message> messages) {
+        sortMessages(messages);
+
         DiffUtil.DiffResult diffResult =
                 DiffUtil.calculateDiff(new MessageDiffUtil(this.messages, messages));
 
         this.messages.clear();
         this.messages.addAll(messages);
-
-        sortMessages();
 
         diffResult.dispatchUpdatesTo(this);
     }
@@ -63,8 +62,8 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.ViewHo
         return messages;
     }
 
-    private void sortMessages() {
-        Collections.sort(messages, (message1, message2) -> {
+    private void sortMessages(List<Message> sortedList) {
+        Collections.sort(sortedList, (message1, message2) -> {
             LocalDateTime dateMessage1 = TimeUtils.longToLocalDateTime(message1.getTimeSend());
             LocalDateTime dateMessage2 = TimeUtils.longToLocalDateTime(message2.getTimeSend());
 
@@ -88,33 +87,41 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.ViewHo
     public void onBindViewHolder(MessagesAdapter.ViewHolder holder, int position) {
         Message currentMessage = messages.get(position);
         LocalDateTime dateCurrentMessage = TimeUtils.longToLocalDateTime(currentMessage.getTimeSend());
+        DecimalFormat timePattern = new DecimalFormat("00");
 
-        DecimalFormat myFormatter = new DecimalFormat("00");
-        holder.binding.txtTimeSend.setText(
-                String.format("%s:%s", myFormatter.format(dateCurrentMessage.getHour()), myFormatter.format(dateCurrentMessage.getMinute())));
-
-//        LinearLayout.LayoutParams paramsMsg =
-//                new LinearLayout.LayoutParams(holder.binding.container.getLayoutParams());
+        FrameLayout.LayoutParams paramsMsg =
+                new FrameLayout.LayoutParams(holder.binding.containerMessage.getLayoutParams());
 
         if (currentMessage.getFromUUID().equals(myDeviceUUID)) {
-//            paramsMsg.layoutGravity = Gravity.END;
+            paramsMsg.gravity = Gravity.START;
 
-            setupMyMessage(currentMessage, holder);
+            setupMyMessage(currentMessage, timePattern, dateCurrentMessage, holder);
         } else {
-//            paramsMsg.gravity = Gravity.START;
+            paramsMsg.gravity = Gravity.END;
 
-            setNotMyMessage(currentMessage, holder);
+            setNotMyMessage(currentMessage, timePattern, dateCurrentMessage, holder);
         }
 
-//        holder.binding.messageContainer.setLayoutParams(paramsMsg);
+        holder.binding.containerMessage.setLayoutParams(paramsMsg);
     }
 
-    private void setupMyMessage(Message currentMessage, ViewHolder holder) {
-        holder.itemView.setBackground(
+    private void setupMyMessage(Message currentMessage, DecimalFormat timeFormat, LocalDateTime dateCurrentMessage, ViewHolder holder) {
+        holder.binding.spacerLeft.setVisibility(View.VISIBLE);
+        holder.binding.txtTimeSendLeft.setVisibility(View.VISIBLE);
+        holder.binding.btnStatusMessage.setVisibility(View.VISIBLE);
+
+        holder.binding.spacerRight.setVisibility(View.GONE);
+        holder.binding.txtTimeSendRight.setVisibility(View.GONE);
+
+        holder.binding.txtTimeSendLeft.setText(
+                String.format("%s:%s", timeFormat.format(dateCurrentMessage.getHour()), timeFormat.format(dateCurrentMessage.getMinute())));
+
+        holder.binding.containerMessage.setBackground(
                 holder.context.getResources().getDrawable(R.drawable.background_my_message));
 
         holder.binding.txtTextMessage.setText(
-                String.format("ME: %s", currentMessage.getText()));
+                String.format("%s", currentMessage.getText()));
+
 
         if (currentMessage.isDelivered()) {
             holder.binding.btnStatusMessage.setVisibility(View.GONE);
@@ -127,12 +134,22 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.ViewHo
         }
     }
 
-    private void setNotMyMessage(Message currentMessage, ViewHolder holder) {
-        holder.itemView.setBackground(
+    private void setNotMyMessage(Message currentMessage, DecimalFormat timeFormat, LocalDateTime dateCurrentMessage, ViewHolder holder) {
+        holder.binding.spacerRight.setVisibility(View.VISIBLE);
+        holder.binding.txtTimeSendRight.setVisibility(View.VISIBLE);
+
+        holder.binding.spacerLeft.setVisibility(View.GONE);
+        holder.binding.txtTimeSendLeft.setVisibility(View.GONE);
+        holder.binding.btnStatusMessage.setVisibility(View.GONE);
+
+        holder.binding.txtTimeSendRight.setText(
+                String.format("%s:%s", timeFormat.format(dateCurrentMessage.getHour()), timeFormat.format(dateCurrentMessage.getMinute())));
+
+        holder.binding.containerMessage.setBackground(
                 holder.context.getResources().getDrawable(R.drawable.background_not_my_message));
 
         holder.binding.txtTextMessage.setText(
-                String.format("%s: %s", currentMessage.getFromName(), currentMessage.getText()));
+                String.format("%s", currentMessage.getText()));
 
         holder.binding.btnStatusMessage.setVisibility(View.GONE);
     }

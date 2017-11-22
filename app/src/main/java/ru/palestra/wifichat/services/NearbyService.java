@@ -59,6 +59,10 @@ import ru.palestra.wifichat.utils.CreateUiListUtil;
 public class NearbyService extends Service {
     private static final String TAG = NearbyService.class.getSimpleName() + "_SERVICE";
 
+    private static final int TIME_DISCOVERY = 4;
+    private static final int TIME_WAIT_DISCOVERY = 8;
+    private static final int TIME_RESEND_MSG = 5;
+
     private static final int MSG_START_DISCOVERY = 1001;
     private static final int MSG_STOP_DISCOVERY = 1002;
 
@@ -84,7 +88,9 @@ public class NearbyService extends Service {
 
     private boolean isAdvertising;
     private boolean isDiscovering;
+    private boolean needStop;
 
+    private List<Client> requestedClients = new ArrayList<>();  // те, кому мы кинули запрос
     private List<Client> connectedClients = new ArrayList<>();
     private Set<Client> potentialClients = new HashSet<>(); //Постоянно находит одинаковые точки
 
@@ -112,14 +118,13 @@ public class NearbyService extends Service {
         stopConnectionTimer();
         stopSendMessageTimer();
 
-        setDefaultValue();
-
         stopAdvertising();
         stopDiscovery();
+        Nearby.Connections.stopAllEndpoints(App.googleApiClient());
 
+        setDefaultValue();
         super.onDestroy();
     }
-
 
     @Nullable
     @Override
@@ -190,9 +195,13 @@ public class NearbyService extends Service {
      * Запуск поиска точек для соединения
      */
     private void startDiscovery() {
+        if (needStop) return;
         if (!isConnected()) return;
         Logger.debugLog("Start discovery");
         isDiscovering = true;
+
+        sendBroadcast(new Intent(ConfigIntent.ACTION_DISCOVERY)
+                .putExtra(ConfigIntent.STATUS_DISCOVERY, true));
 
         Nearby.Connections.startDiscovery(
                 App.googleApiClient(),
@@ -207,9 +216,13 @@ public class NearbyService extends Service {
      * Прекращение поиска точек для соединения
      */
     private void stopDiscovery() {
+        if (needStop) return;
         if (!isConnected()) return;
         Logger.debugLog("Stop discovery");
         isDiscovering = false;
+
+        sendBroadcast(new Intent(ConfigIntent.ACTION_DISCOVERY)
+                .putExtra(ConfigIntent.STATUS_DISCOVERY, false));
 
         Nearby.Connections.stopDiscovery(App.googleApiClient());
     }
@@ -256,16 +269,25 @@ public class NearbyService extends Service {
         Client[] potentialClientsArray = new Client[potentialClients.size()];
         potentialClientsArray = potentialClients.toArray(potentialClientsArray);
 
+        //Запрещает Discovery
+        stopDiscovery();
+        needStop = true;
+
         for (Client potentialClient : potentialClientsArray) {
+            if (requestedClients.contains(potentialClient)) continue;
+
+            requestedClients.add(potentialClient);
             requestConnection(potentialClient);
             // FIXME: 14.11.2017
             // Можно добавить задержку (Проверить)
             try {
-                Thread.sleep(100);
+                Thread.sleep(250);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         }
+        needStop = false;
+
     }
 
     private void requestConnection(Client potentialClient) {
@@ -276,12 +298,20 @@ public class NearbyService extends Service {
                 connectionLifecycleCallback
         ).setResultCallback(status -> {
             if (status.isSuccess()) {
-                //nothing
+                removePotentialClient(potentialClient);
+                requestedClients.remove(potentialClient);
             } else {
+                Logger.errorLog(String.format("Error request connection: %s : %s", status.getStatus(), potentialClient.getNearbyKey()));
                 //Мертвые точки
                 if (status.getStatus().toString().contains("STATUS_ENDPOINT_UNKNOWN")) {
                     removePotentialClient(potentialClient);
+                } else if (status.getStatus().toString().contains("STATUS_ALREADY_CONNECTED_TO_ENDPOINT")) {
+                    removePotentialClient(potentialClient);
+                } else if (status.getStatus().toString().contains("STATUS_ENDPOINT_IO_ERROR")) {
+                    Nearby.Connections.disconnectFromEndpoint(App.googleApiClient(), potentialClient.getNearbyKey());
                 }
+
+                requestedClients.remove(potentialClient);
             }
         });
     }
@@ -311,6 +341,9 @@ public class NearbyService extends Service {
 
         @Override
         public void onDisconnected(String endPoint) {
+            Logger.errorLog("Disconnect endpoint: " + endPoint);
+
+            Nearby.Connections.disconnectFromEndpoint(App.googleApiClient(), endPoint);
             removeConnectedClient(endPoint);
         }
     };
@@ -472,7 +505,7 @@ public class NearbyService extends Service {
 
     private void sendDeliveredMessage() {
         //Защита, если мы еще не успели всем передать сообщение, а уже сработало событие
-        if (sendingDeliveredMessageComplete) {   //Lock.class ??
+        if (sendingLostMessageComplete) {   //Lock.class ??
             sendingDeliveredMessageComplete = false;
 
             for (Message message : createValidMessage(deliveredLostMessages)) {
@@ -547,6 +580,8 @@ public class NearbyService extends Service {
                             //Если точка изменилась, делаем из сообщения Бродкаст
                             lostMessages.add(
                                     Message.broadcastMessage(message.getFromName(), message.getFromUUID(), message.getTargetUUID(), message.getText(), message.getMsgUUID()));
+
+                            sendLostMessage();
                         } else {
                             lostMessages.add(message);
                         }
@@ -564,14 +599,22 @@ public class NearbyService extends Service {
         Client[] potentialClientsArray = new Client[potentialClients.size()];
         potentialClientsArray = potentialClients.toArray(potentialClientsArray);
 
-        for (Client client : potentialClientsArray) {
+        for (Client potentialClient : potentialClientsArray) {
             //Добавление нового клиента
-            if (client.getName().equals(newPotentialClient.getName()) &&
-                    !client.getNearbyKey().equals(newPotentialClient.getNearbyKey())) {
+            if (potentialClient.getName().equals(newPotentialClient.getName()) &&
+                    !potentialClient.getNearbyKey().equals(newPotentialClient.getNearbyKey())) {
                 //Нужно обновить запись о клиенте, у него сменился idEndPoint
-                potentialClients.remove(client);
+                potentialClients.remove(potentialClient);
                 potentialClients.add(newPotentialClient);
 
+                return;
+            }
+        }
+
+        for (Client connectedClient : connectedClients) {
+            //Добавление нового клиента
+            if (connectedClient.getName().equals(newPotentialClient.getName()) &&
+                    connectedClient.getNearbyKey().equals(newPotentialClient.getNearbyKey())) {
                 return;
             }
         }
@@ -589,18 +632,6 @@ public class NearbyService extends Service {
                 potentialClients.remove(removePotentialClient);
                 return;
             }
-        }
-    }
-
-    public String createFooterText() {
-        String textClients = "";
-        if (!connectedClients.isEmpty()) {
-            for (Client client : connectedClients) {
-                textClients += client.getName() + ", ";
-            }
-            return textClients;
-        } else {
-            return "PEEK";
         }
     }
 
@@ -669,7 +700,7 @@ public class NearbyService extends Service {
             //Попытка коннекта, отправка сообщений каждые 5 секунд
             timerSendMessage.schedule(
                     sendMessageSendMessageServiceTimer,
-                    TimeUnit.SECONDS.toMillis(5));
+                    TimeUnit.SECONDS.toMillis(TIME_RESEND_MSG));
         }
     }
 
@@ -740,7 +771,7 @@ public class NearbyService extends Service {
 
             connectionTimer.schedule(
                     connectionServiceTimer,
-                    TimeUnit.SECONDS.toMillis(isDiscovering ? 3 : 10));
+                    TimeUnit.SECONDS.toMillis(isDiscovering ? TIME_DISCOVERY : TIME_WAIT_DISCOVERY));
         }
     }
 

@@ -26,6 +26,8 @@ public class UpdateMsgStatusCommand implements DbCommand<MessageSql> {
                             .where(MessageSqlDao.Properties.MessageUUID.eq(deliveredMessage.getMsgUUID()))
                             .unique();
 
+            if (updatedMessageSql == null) return null;
+
             updatedMessageSql.setStatusDelivered(true);
             messageSqlDao.update(updatedMessageSql);
 

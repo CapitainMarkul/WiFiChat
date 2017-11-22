@@ -44,19 +44,21 @@ public class ClientsAdapter extends RecyclerView.Adapter<ClientsAdapter.ViewHold
     }
 
     public void updateClients(List<Client> newClients) {
-        DiffUtil.DiffResult diffResult =
-                DiffUtil.calculateDiff(new ClientsDiffUtil(this.clients, newClients));
+//        sortClients(clients);
+        sortClients(newClients);
+
+//        DiffUtil.DiffResult diffResult =
+//                DiffUtil.calculateDiff(new ClientsDiffUtil(this.clients, newClients));
 
         this.clients.clear();
         this.clients.addAll(newClients);
 
-        sortClients();
-
-        diffResult.dispatchUpdatesTo(this);
+        notifyDataSetChanged();
+//        diffResult.dispatchUpdatesTo(this);
     }
 
-    private void sortClients() {
-        Collections.sort(clients, (client1, client2) -> {
+    private void sortClients(List<Client> sortedList) {
+        Collections.sort(sortedList, (client1, client2) -> {
             if (!client1.isOnline() && client2.isOnline()) {
                 return 1;
             } else if (client1.isOnline() && !client2.isOnline()) {

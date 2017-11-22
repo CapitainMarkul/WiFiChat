@@ -49,10 +49,11 @@ public class CreateUiListUtil {
         for (Client newClient : connectedClients) {
             boolean isNewClient = true;
             for (Client oldClient : oldClientArray) {
-                if (oldClient.getUUID().equals(newClient.getUUID()) &&
-                        oldClient.isOnline() != newClient.isOnline()) {
-                    uiClients.remove(oldClient);
-                    uiClients.add(newClient);
+                if (oldClient.getUUID().equals(newClient.getUUID())) {
+                    int indexOldClient = uiClients.indexOf(oldClient);
+
+                    uiClients.remove(indexOldClient);
+                    uiClients.add(indexOldClient, newClient);
                     isNewClient = false;
                     break;
                 }

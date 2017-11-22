@@ -6,39 +6,77 @@
 
     </data>
 
-    <RelativeLayout
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@drawable/chat_background">
-
-        <android.support.v7.widget.RecyclerView
-            android:id="@+id/rv_chat_messages"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:layout_above="@+id/ln_edit_container"
-            tools:listitem="@layout/item_message"/>
+        android:layout_height="match_parent">
 
         <LinearLayout
-            android:id="@+id/ln_edit_container"
+            android:id="@+id/container_target_name"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_alignParentBottom="true"
-            android:background="@drawable/background_not_my_message"
+            android:layout_height="30dp"
+            android:background="@drawable/background_target_name"
+            android:gravity="center"
             android:orientation="horizontal">
 
-            <EditText
-                android:id="@+id/text_message"
-                android:layout_width="match_parent"
-                android:layout_height="40dp"
-                android:layout_weight="0.2"
-                android:inputType="text"
-                tools:ignore="LabelFor"/>
+            <TextView
+                android:id="@+id/txt_target_name"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:textColor="@color/target_name"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                tools:text="Nexus 5"/>
 
-            <Button
-                android:id="@+id/btn_send_message"
+            <ImageView
+                android:id="@+id/img_status_online"
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:layout_marginEnd="12dp"
+                android:layout_marginStart="12dp"
+                android:adjustViewBounds="true"
+                tools:src="@drawable/offline"/>
+        </LinearLayout>
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_marginTop="30dp"
+            android:background="@drawable/chat_background">
+
+            <android.support.v7.widget.RecyclerView
+                android:id="@+id/rv_chat_messages"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:layout_weight="0.6"/>
-        </LinearLayout>
-    </RelativeLayout>
+                android:layout_above="@+id/ln_edit_container"
+                tools:listitem="@layout/item_message"/>
+
+            <LinearLayout
+                android:id="@+id/ln_edit_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_alignParentBottom="true"
+                android:background="@drawable/background_enter_message"
+                android:orientation="horizontal">
+
+                <EditText
+                    android:id="@+id/text_message"
+                    android:layout_width="match_parent"
+                    android:layout_height="40dp"
+                    android:layout_weight="0.2"
+                    android:backgroundTint="@color/colorPrimaryDark"
+                    android:inputType="text"
+                    android:textCursorDrawable="@drawable/background_cursor"
+                    tools:ignore="LabelFor"/>
+
+                <ImageButton
+                    android:id="@+id/btn_send_message"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_weight="0.8"
+                    android:background="@drawable/selector_send_button"
+                    android:src="@drawable/ic_send_message"/>
+            </LinearLayout>
+        </RelativeLayout>
+    </FrameLayout>
+
 </layout>

@@ -1,7 +1,5 @@
 package ru.palestra.wifichat.utils;
 
-import ru.palestra.wifichat.App;
-
 /**
  * Created by da.pavlov1 on 13.11.2017.
  */

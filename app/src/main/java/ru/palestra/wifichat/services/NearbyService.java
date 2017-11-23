@@ -108,7 +108,8 @@ public class NearbyService extends Service {
         myDevice = App.sharedPreference().getInfoAboutMyDevice();
         dbClient = App.dbClient();
 
-        CreateUiListUtil.init(dbClient);
+        CreateUiListUtil.init(
+                dbClient.getAllWasConnectedClients());
 
         runConnectionThread();
         runSendMessageThread();
@@ -150,10 +151,6 @@ public class NearbyService extends Service {
 
         return super.onStartCommand(intent, flags, startId);
     }
-
-    /**
-     * SEARCH NEW CLIENT PART
-     * */
 
     /**
      * startAdvertising()
@@ -368,9 +365,9 @@ public class NearbyService extends Service {
             if (disconnectedClient.getNearbyKey().equals(idEndPoint)) {
                 connectedClients.remove(disconnectedClient);
 
-                CreateUiListUtil.clientDisconnect(disconnectedClient);
+                disconnectedClient.setOnline(false);
                 sendBroadcast(new Intent(ConfigIntent.ACTION_CONNECTION_INITIATED)
-                        .putExtra(ConfigIntent.UPDATED_CLIENTS, Parcels.wrap(CreateUiListUtil.getUiClients())));
+                        .putExtra(ConfigIntent.UPDATED_CLIENTS, Parcels.wrap(CreateUiListUtil.updateUiClientsList(disconnectedClient))));
 
                 break;
             }
@@ -427,8 +424,8 @@ public class NearbyService extends Service {
         }
     }
 
-    private boolean isPingPongMsg(Message message, String idEndPoint) {
-        if (message.getState() != Message.State.PING_PONG_MESSAGE) return false;
+    private void isPingPongMsg(Message message, String idEndPoint) {
+        if (message.getState() != Message.State.PING_PONG_MESSAGE) return;
         Logger.errorLog(String.format("Ping from: %s:%s", message.getFromName(), idEndPoint));
 
         Client connectedClient =
@@ -438,17 +435,19 @@ public class NearbyService extends Service {
         connectedClients.add(connectedClient);
         removePotentialClient(connectedClient);
 
-        CreateUiListUtil.clientConnected(idEndPoint, connectedClient);
+        connectedClient
+                .setNearbyKey(idEndPoint)
+                .setOnline(true);
+
         sendBroadcast(new Intent(ConfigIntent.ACTION_CONNECTION_INITIATED)
-                .putExtra(ConfigIntent.UPDATED_CLIENTS, Parcels.wrap(CreateUiListUtil.getUiClients())));
+                .putExtra(ConfigIntent.UPDATED_CLIENTS, Parcels.wrap(CreateUiListUtil.updateUiClientsList(connectedClient))));
 
         dbClient.saveConnectedClient(
                 ClientMapper.toClientDb(connectedClient));
-        return true;
     }
 
-    private boolean isDeliveredMessage(Message message, String idEndPoint) {
-        if (message.getState() != Message.State.DELIVERED_MESSAGE) return false;
+    private void isDeliveredMessage(Message message, String idEndPoint) {
+        if (message.getState() != Message.State.DELIVERED_MESSAGE) return;
 
         Message deliveredMessage = message.getDeliveredMsg();
 
@@ -465,13 +464,11 @@ public class NearbyService extends Service {
             deliveredMessage.setDelivered(true);
             updateMessageAdapter(deliveredMessage);
         }
-
-        return true;
     }
 
-    private boolean isMsgForMe(Message message, String idEndPoint) {
+    private void isMsgForMe(Message message, String idEndPoint) {
         String targetUUID = message.getTargetUUID();
-        if (targetUUID != null && !targetUUID.equals(myDevice.getUUID())) return false;
+        if (targetUUID != null && !targetUUID.equals(myDevice.getUUID())) return;
 
         Message deliveredMessage =
                 Message.deliveredMessage(myDevice.getName(), myDevice.getUUID(), message);
@@ -484,13 +481,7 @@ public class NearbyService extends Service {
         updateMessageAdapter(message);
         dbClient.saveSentMsg(
                 MessageMapper.toMessageDb(message));
-        return true;
     }
-
-//    private boolean isBroadcastMSG(Message message) {
-//        return message.getTargetId() == null && message.getTargetUUID() == null;
-//        // TODO: 14.11.2017 Save Message, Update Ui. Проверить, есть ли сейчас Broadcast без конечной цели (Вроде нет)
-//    }
 
     private void sendLostMessage() {
         //Защита, если мы еще не успели всем передать сообщение, а уже сработало событие
@@ -517,7 +508,7 @@ public class NearbyService extends Service {
 
     private synchronized void sendDeliveredMessage() {
         //Защита, если мы еще не успели всем передать сообщение, а уже сработало событие
-        if (sendingLostMessageComplete) {   //Lock.class ??
+        if (sendingDeliveredMessageComplete) {   //Lock.class ??
             sendingDeliveredMessageComplete = false;
 
             for (Message message : createValidMessage(deliveredLostMessages)) {

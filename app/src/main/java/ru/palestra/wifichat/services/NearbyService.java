@@ -560,7 +560,7 @@ public class NearbyService extends Service {
                         MessageConverter.toBytes(message)))
                 .setResultCallback(status -> {
                     if (status.isSuccess()) {
-                        Logger.debugLog(String.format("Message: %s | Send target: %s", message.getText(), idEndPoint));
+                        Logger.debugLog(String.format("Message text: %s | Send target: %s | IsPing: %s", message.getText(), idEndPoint, message.isPingPongTypeMsg()));
 
                         //На "Понг" сообщения нам должен ответить САМ получатель, иначе считаем, что контакт не был установлен
                         if (message.getState() == Message.State.PING_PONG_MESSAGE) return;

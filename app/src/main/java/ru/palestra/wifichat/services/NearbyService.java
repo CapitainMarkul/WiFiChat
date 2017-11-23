@@ -27,7 +27,6 @@ import com.google.android.gms.nearby.connection.PayloadTransferUpdate;
 import com.google.android.gms.nearby.connection.Strategy;
 
 import org.parceler.Parcels;
-import org.threeten.bp.temporal.ChronoUnit;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -41,16 +40,16 @@ import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
 
 import ru.palestra.wifichat.App;
-import ru.palestra.wifichat.domain.db.DbClient;
-import ru.palestra.wifichat.utils.MessageConverter;
 import ru.palestra.wifichat.data.models.mappers.ClientMapper;
 import ru.palestra.wifichat.data.models.mappers.MessageMapper;
 import ru.palestra.wifichat.data.models.viewmodels.Client;
 import ru.palestra.wifichat.data.models.viewmodels.Message;
+import ru.palestra.wifichat.domain.db.DbClient;
 import ru.palestra.wifichat.utils.ConfigIntent;
-import ru.palestra.wifichat.utils.Logger;
-import ru.palestra.wifichat.utils.TimeUtils;
 import ru.palestra.wifichat.utils.CreateUiListUtil;
+import ru.palestra.wifichat.utils.Logger;
+import ru.palestra.wifichat.utils.MessageConverter;
+import ru.palestra.wifichat.utils.ValidMessageUtil;
 
 /**
  * Created by da.pavlov1 on 09.11.2017.
@@ -309,14 +308,6 @@ public class NearbyService extends Service {
         });
     }
 
-    private synchronized void restartBluetooth() {
-        stopAdvertising();
-        stopDiscovery();
-
-        startAdvertising();
-        startDiscovery();
-    }
-
     private ConnectionLifecycleCallback connectionLifecycleCallback = new ConnectionLifecycleCallback() {
         @Override
         public void onConnectionInitiated(String endPoint, ConnectionInfo connectionInfo) {
@@ -488,7 +479,7 @@ public class NearbyService extends Service {
         if (sendingLostMessageComplete) {   //Lock.class ??
             sendingLostMessageComplete = false;
 
-            for (Message message : createValidMessage(lostMessages)) {
+            for (Message message : ValidMessageUtil.obtainValidMessage(lostMessages)) {
                 for (Client client : connectedClients) {
                     //Сообщение не нужно передавать назад отправителю
                     if (client.getUUID() != null
@@ -511,12 +502,12 @@ public class NearbyService extends Service {
         if (sendingDeliveredMessageComplete) {   //Lock.class ??
             sendingDeliveredMessageComplete = false;
 
-            for (Message message : createValidMessage(deliveredLostMessages)) {
+            for (Message message : ValidMessageUtil.obtainValidMessage(deliveredLostMessages)) {
                 for (Client client : connectedClients) {
                     //Проверяем, пытались ли мы уже отправлять сообщение данному клиенту
                     if (banListSendMessage.get(message) == null ||
                             !banListSendMessage.get(message).contains(client.getNearbyKey())) {
-                        //Отправляем тому, кто прислал нам это сообщение
+                        //Отправляем всем подключенным клиентам
                         sendTargetMessage(message, client.getNearbyKey());
                     }
                 }
@@ -524,24 +515,6 @@ public class NearbyService extends Service {
 
             sendingDeliveredMessageComplete = true;
         }
-    }
-
-    private List<Message> createValidMessage(List<Message> messages) {
-        List<Message> validMessages = new ArrayList<>();
-
-        Message[] oldMessages = new Message[messages.size()];
-        oldMessages = messages.toArray(oldMessages);
-
-        for (Message message : oldMessages) {
-            //Удаляются сообщения старше 2 минут
-            if (ChronoUnit.MINUTES.between(TimeUtils.longToLocalDateTime(message.getTimeSend()), TimeUtils.timeNowLocalDateTime()) > 2) {
-                messages.remove(message);
-                continue;
-            }
-
-            validMessages.add(message);
-        }
-        return validMessages;
     }
 
     private void putClientInBanList(Message message, String idEndPoint) {
@@ -560,7 +533,7 @@ public class NearbyService extends Service {
                         MessageConverter.toBytes(message)))
                 .setResultCallback(status -> {
                     if (status.isSuccess()) {
-                        Logger.debugLog(String.format("Message text: %s | Send target: %s | IsPing: %s", message.getText(), idEndPoint, message.isPingPongTypeMsg()));
+                        Logger.debugLog(String.format("Message text: %s | Send target: %s | IsPing: %s | IsDelivered: %s", message.getText(), idEndPoint, message.isPingPongTypeMsg(), message.isDelivered()));
 
                         //На "Понг" сообщения нам должен ответить САМ получатель, иначе считаем, что контакт не был установлен
                         if (message.getState() == Message.State.PING_PONG_MESSAGE) return;
@@ -652,6 +625,14 @@ public class NearbyService extends Service {
         isAdvertising = false;
         isDiscovering = false;
         connectedClients.clear();
+    }
+
+    private synchronized void restartBluetooth() {
+        stopAdvertising();
+        stopDiscovery();
+
+        startAdvertising();
+        startDiscovery();
     }
 
     /**

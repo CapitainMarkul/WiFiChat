@@ -1,10 +1,9 @@
 package ru.palestra.wifichat.adapters;
 
 import android.content.Context;
-import android.databinding.DataBindingUtil;
-import android.graphics.Color;
-import android.support.v7.util.DiffUtil;
-import android.support.v7.widget.RecyclerView;
+import androidx.databinding.DataBindingUtil;
+import androidx.recyclerview.widget.DiffUtil;
+import androidx.recyclerview.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -14,7 +13,6 @@ import java.util.Collections;
 import java.util.List;
 
 import ru.palestra.wifichat.R;
-import ru.palestra.wifichat.adapters.diffutil.ClientsDiffUtil;
 import ru.palestra.wifichat.data.models.viewmodels.Client;
 import ru.palestra.wifichat.databinding.ItemClientBinding;
 

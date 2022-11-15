@@ -1,11 +1,10 @@
 package ru.palestra.wifichat.adapters.diffutil;
 
-import android.support.v7.util.DiffUtil;
+import androidx.recyclerview.widget.DiffUtil;
 
 import java.util.List;
 
 import ru.palestra.wifichat.data.models.viewmodels.Client;
-import ru.palestra.wifichat.utils.Logger;
 
 /**
  * Created by Dmitry on 18.11.2017.

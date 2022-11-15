@@ -2,15 +2,14 @@ apply plugin: 'com.android.application'
 apply plugin: 'org.greenrobot.greendao'
 
 android {
-    compileSdkVersion 26
+    compileSdkVersion 33
     defaultConfig {
         applicationId "ru.palestra.wifichat"
-        minSdkVersion 16
-        targetSdkVersion 26
+        minSdkVersion 23
+        targetSdkVersion 33
         versionCode 1
         versionName "1.0"
         multiDexEnabled true
-        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
         release {
@@ -54,7 +53,4 @@ dependencies {
     implementation support.recyclerview
 
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    testImplementation test.junit
-    androidTestImplementation test.runner
-    androidTestImplementation test.espresso
 }

@@ -2,11 +2,11 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://C:\Work Projects\Android\chatDom\WiFiChat.iml" filepath="C:\Work Projects\Android\chatDom\WiFiChat.iml" />
-      <module fileurl="file://C:\Users\da.pavlov1\PavlovDoc\workProject\chatDom\WiFiChat.iml" filepath="C:\Users\da.pavlov1\PavlovDoc\workProject\chatDom\WiFiChat.iml" />
-      <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
-      <module fileurl="file://$PROJECT_DIR$/chatDom.iml" filepath="$PROJECT_DIR$/chatDom.iml" />
-      <module fileurl="file://C:\Users\da.pavlov1\PavlovDoc\workProject\WiFiChat\chatDom.iml" filepath="C:\Users\da.pavlov1\PavlovDoc\workProject\WiFiChat\chatDom.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/WiFiChat.iml" filepath="$PROJECT_DIR$/.idea/modules/WiFiChat.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/WiFiChat.app.iml" filepath="$PROJECT_DIR$/.idea/modules/app/WiFiChat.app.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/WiFiChat.app.androidTest.iml" filepath="$PROJECT_DIR$/.idea/modules/app/WiFiChat.app.androidTest.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/WiFiChat.app.main.iml" filepath="$PROJECT_DIR$/.idea/modules/app/WiFiChat.app.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/WiFiChat.app.unitTest.iml" filepath="$PROJECT_DIR$/.idea/modules/app/WiFiChat.app.unitTest.iml" />
     </modules>
   </component>
 </project>

@@ -1,14 +1,15 @@
 apply plugin: 'com.android.application'
 apply plugin: 'org.greenrobot.greendao'
+apply plugin: 'org.jetbrains.kotlin.android'
 
 android {
     compileSdkVersion 33
     defaultConfig {
-        applicationId "ru.palestra.wifichat"
+        applicationId "ru.palestra.wifichat.new_version"
         minSdkVersion 23
         targetSdkVersion 33
-        versionCode 1
-        versionName "1.0"
+        versionCode 2
+        versionName "1.1"
         multiDexEnabled true
     }
     buildTypes {
@@ -22,6 +23,10 @@ android {
         enabled = true
     }
 
+    buildFeatures {
+        viewBinding true
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
@@ -29,12 +34,19 @@ android {
 }
 
 dependencies {
+    implementation 'com.afollestad.material-dialogs:core:3.3.0'
+
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.5.1'
+
+    implementation 'androidx.core:core-ktx:1.9.0'
+    implementation 'androidx.appcompat:appcompat:1.5.1'
+
     //GreenDao
     implementation greenRobot.greenDao
     implementation greenRobot.eventBus
 
     //Gson (Убрать позже)
-    implementation 'com.google.code.gson:gson:2.8.2'
+    implementation 'com.google.code.gson:gson:2.10'
 
     //ThreetenTime
     implementation threeTen.threeTen
@@ -47,7 +59,6 @@ dependencies {
     annotationProcessor parceller.parcellerAnnotProc
 
     //Support
-    implementation support.appcompat7
     implementation support.design
     implementation support.constraintLayout
     implementation support.recyclerview

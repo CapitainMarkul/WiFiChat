@@ -1,7 +1,7 @@
 <resources>
 
     <!-- Base application theme. -->
-    <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
+    <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
         <!-- Customize your theme here. -->
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
@@ -13,5 +13,15 @@
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
+    </style>
+
+    <style name="DeviceInfoButtonStyle" parent="@style/Widget.AppCompat.TextView">
+        <item name="android:layout_marginTop">@dimen/default_padding_very_small</item>
+        <item name="android:background">@drawable/background_device_state</item>
+        <item name="android:textColor">@color/palette_blue_grey_400</item>
+        <item name="android:textSize">@dimen/large_text_size_scale_on</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+        <item name="android:enabled">false</item>
     </style>
 </resources>

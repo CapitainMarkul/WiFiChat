@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:divider="@drawable/vertical_items_divider"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:paddingHorizontal="@dimen/default_padding"
+    android:showDividers="middle">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:paddingVertical="@dimen/default_padding_half"
+        android:text="@string/who_is_you"
+        android:textSize="@dimen/large_text_size_scale_on"
+        android:textStyle="bold"/>
+
+    <TextView
+        android:id="@+id/txt_server_btn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/background_default_btn"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center"
+        android:paddingVertical="@dimen/default_padding_half"
+        android:text="@string/who_is_pine"
+        android:textSize="@dimen/default_text_size_scale_on"/>
+
+    <TextView
+        android:id="@+id/txt_client_btn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/background_default_btn"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center"
+        android:paddingVertical="@dimen/default_padding_half"
+        android:text="@string/who_is_nature_lover"
+        android:textSize="@dimen/default_text_size_scale_on"/>
+
+</LinearLayout>

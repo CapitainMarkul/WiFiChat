@@ -26,7 +26,7 @@ public class SaveSentMsgCommand implements DbCommand<MessageSql> {
 
             if(messageSql != null) return messageSql;
 
-            messageSqlDao.insert(sentMessageSql);
+            messageSqlDao.insertOrReplace(sentMessageSql);
             return sentMessageSql;
         }
     }

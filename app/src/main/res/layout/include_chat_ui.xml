@@ -1,0 +1,74 @@
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/chat_background">
+
+    <LinearLayout
+        android:id="@+id/container_chat_name"
+        android:layout_width="0dp"
+        android:layout_height="30dp"
+        android:background="@drawable/background_target_name"
+        android:gravity="center"
+        android:orientation="horizontal"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <TextView
+            android:id="@+id/txt_target_name"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:textColor="@color/target_name"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            app:autoSizeMaxTextSize="20sp"
+            app:autoSizeStepGranularity="2sp"
+            app:autoSizeTextType="uniform"
+            tools:text="Nexus 5"/>
+
+    </LinearLayout>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_chat_messages"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:paddingHorizontal="@dimen/default_padding_half"
+        android:paddingTop="@dimen/default_padding_small"
+        app:layout_constraintBottom_toTopOf="@+id/etxt_text_message"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/container_chat_name"
+        tools:listitem="@layout/item_message"/>
+
+    <EditText
+        android:id="@+id/etxt_text_message"
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:background="@drawable/background_enter_message"
+        android:backgroundTint="@color/colorPrimaryDark"
+        android:hint="@string/enter_your_message"
+        android:importantForAutofill="no"
+        android:inputType="textAutoCorrect"
+        android:paddingHorizontal="@dimen/default_padding_half"
+        android:textCursorDrawable="@drawable/background_cursor"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/btn_send_message"
+        app:layout_constraintStart_toStartOf="parent"
+        tools:ignore="LabelFor"/>
+
+    <ImageButton
+        android:id="@+id/btn_send_message"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="@drawable/selector_send_button"
+        android:src="@drawable/ic_send_message"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/etxt_text_message"
+        app:layout_constraintWidth_percent="0.2"
+        tools:ignore="ContentDescription"/>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

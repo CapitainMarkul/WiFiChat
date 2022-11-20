@@ -7,6 +7,7 @@ import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.Process;
+
 import androidx.annotation.Nullable;
 
 import com.google.android.gms.common.api.ResultCallback;
@@ -28,6 +29,7 @@ import com.google.android.gms.nearby.connection.Strategy;
 
 import org.parceler.Parcels;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -38,8 +40,10 @@ import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import ru.palestra.wifichat.App;
+import ru.palestra.wifichat.data.models.daomodels.MessageSql;
 import ru.palestra.wifichat.data.models.mappers.ClientMapper;
 import ru.palestra.wifichat.data.models.mappers.MessageMapper;
 import ru.palestra.wifichat.data.models.viewmodels.Client;
@@ -49,6 +53,7 @@ import ru.palestra.wifichat.utils.ConfigIntent;
 import ru.palestra.wifichat.utils.CreateUiListUtil;
 import ru.palestra.wifichat.utils.Logger;
 import ru.palestra.wifichat.utils.MessageConverter;
+import ru.palestra.wifichat.utils.TimeUtils;
 import ru.palestra.wifichat.utils.ValidMessageUtil;
 
 /**
@@ -58,11 +63,15 @@ import ru.palestra.wifichat.utils.ValidMessageUtil;
 public class NearbyService extends Service {
     private static final String TAG = NearbyService.class.getSimpleName() + "_SERVICE";
 
+    /**
+     * Идентификатор сосны (сервера).
+     */
+    public static final String PINE_CLIENT_UUID = "e02bee5c-122d-4dcd-a8e6-3cdfdddd5ef1";
+
     private static final int TIME_DISCOVERY = 3;
     private static final int TIME_RESTART_ADVERTISING = 30;
     private static final int TIME_WAIT_DISCOVERY = 8;
     private static final int TIME_RESEND_MSG = 5;
-
 
     private static final int MSG_START_DISCOVERY = 1001;
     private static final int MSG_STOP_DISCOVERY = 1002;
@@ -143,8 +152,11 @@ public class NearbyService extends Service {
             if (!lostMessages.contains(msgFromMe)) {
                 sendTargetMessage(msgFromMe, msgFromMe.getTargetId());
 
-                dbClient.saveSentMsg(
-                        MessageMapper.toMessageDb(msgFromMe));
+                /* Сохраняем сообщение на сервере и выставляем время. */
+                if(myDevice.getUUID().equals(PINE_CLIENT_UUID)) {
+                    msgFromMe.setTimeSend(TimeUtils.timeNowLong());
+                    dbClient.saveSentMsg(MessageMapper.toMessageDb(msgFromMe));
+                }
             }
         }
 
@@ -161,11 +173,11 @@ public class NearbyService extends Service {
         isAdvertising = true;
 
         Nearby.Connections.startAdvertising(
-                App.googleApiClient(),
-                myDevice.getName(),
-                SERVICE_ID,
-                connectionLifecycleCallback,
-                new AdvertisingOptions(STRATEGY))
+                        App.googleApiClient(),
+                        myDevice.getName(),
+                        SERVICE_ID,
+                        connectionLifecycleCallback,
+                        new AdvertisingOptions(STRATEGY))
                 .setResultCallback(statusAdvertising);
     }
 
@@ -200,10 +212,10 @@ public class NearbyService extends Service {
                 .putExtra(ConfigIntent.STATUS_DISCOVERY, true));
 
         Nearby.Connections.startDiscovery(
-                App.googleApiClient(),
-                SERVICE_ID,
-                endpointDiscoveryCallback,
-                new DiscoveryOptions(STRATEGY))
+                        App.googleApiClient(),
+                        SERVICE_ID,
+                        endpointDiscoveryCallback,
+                        new DiscoveryOptions(STRATEGY))
                 .setResultCallback(statusDiscovery);
     }
 
@@ -381,7 +393,7 @@ public class NearbyService extends Service {
         });
     }
 
-    private PayloadCallback messageListener = new PayloadCallback() {
+    private final PayloadCallback messageListener = new PayloadCallback() {
         @Override
         public void onPayloadReceived(String idEndPoint, Payload payload) {
             Message receivedMessage = MessageConverter.getMessage(payload.asBytes());
@@ -435,6 +447,26 @@ public class NearbyService extends Service {
 
         dbClient.saveConnectedClient(
                 ClientMapper.toClientDb(connectedClient));
+
+        /* Сервер должен отправить все новые сообщения на клиент. */
+        if (myDevice.getUUID().equals(PINE_CLIENT_UUID)) {
+            List<MessageSql> notReadMessagesSql = dbClient.getAllNotReadMsgForClient(
+                    PINE_CLIENT_UUID, connectedClient.getUUID()
+            );
+
+            for (MessageSql messageSql : notReadMessagesSql) {
+                Message uiMessage = MessageMapper.toViewMessage(messageSql);
+
+                /* Меняем таргет, как будто бы сообщение было для него. */
+                uiMessage.setTargetUUID(connectedClient.getUUID());
+
+                if(uiMessage.getFromUUID().equals(connectedClient.getUUID())) {
+                    uiMessage.setFromUUID(PINE_CLIENT_UUID);
+                }
+
+                sendMsgFromServer(uiMessage);
+            }
+        }
     }
 
     private void isDeliveredMessage(Message message, String idEndPoint) {
@@ -470,8 +502,28 @@ public class NearbyService extends Service {
         deliveredLostMessages.add(deliveredMessage);
 
         updateMessageAdapter(message);
-        dbClient.saveSentMsg(
-                MessageMapper.toMessageDb(message));
+
+        /* Сохраняем сообщение на сервере и выставляем время. */
+        if(myDevice.getUUID().equals(PINE_CLIENT_UUID)) {
+            message.setTimeSend(TimeUtils.timeNowLong());
+            dbClient.saveSentMsg(MessageMapper.toMessageDb(message));
+        }
+
+        /* Сервер должен сделать рассылку на всех своих клиентов. */
+        if (myDevice.getUUID().equals(PINE_CLIENT_UUID)) {
+            for (Client client : connectedClients) {
+                message.setTargetId(client.getNearbyKey());
+                message.setTargetUUID(client.getUUID());
+                sendMsgFromServer(message);
+            }
+        }
+    }
+
+    private void sendMsgFromServer(Message message) {
+        onStartCommand(
+                new Intent(this, NearbyService.class)
+                        .putExtra(ConfigIntent.MESSAGE, message), 0, 0
+        );
     }
 
     private void sendLostMessage() {
@@ -527,10 +579,10 @@ public class NearbyService extends Service {
 
     private void sendTargetMessage(Message message, String idEndPoint) {
         Nearby.Connections.sendPayload(
-                App.googleApiClient(),
-                idEndPoint,
-                Payload.fromBytes(
-                        MessageConverter.toBytes(message)))
+                        App.googleApiClient(),
+                        idEndPoint,
+                        Payload.fromBytes(
+                                MessageConverter.toBytes(message)))
                 .setResultCallback(status -> {
                     if (status.isSuccess()) {
                         Logger.debugLog(String.format("Message text: %s | Send target: %s | IsPing: %s | IsDelivered: %s", message.getText(), idEndPoint, message.isPingPongTypeMsg(), message.isDelivered()));

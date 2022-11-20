@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layout xmlns:android="http://schemas.android.com/apk/res/android"
-        xmlns:tools="http://schemas.android.com/tools">
+<layout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <data>
 
@@ -9,71 +11,139 @@
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="5dp"
-        android:layout_marginEnd="10dp"
-        android:layout_marginStart="10dp">
+        android:paddingBottom="@dimen/default_padding_small">
 
-        <LinearLayout
+        <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/container_message"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:padding="4dp"
-            android:weightSum="1.1"
+            android:layout_marginHorizontal="@dimen/default_padding"
             tools:background="@drawable/background_not_my_message">
 
-            <ImageView
-                android:id="@+id/btn_status_message"
-                android:layout_width="0dp"
-                android:layout_height="25dp"
-                android:layout_weight="0.1"
-                android:adjustViewBounds="true"
-                android:src="@drawable/ic_message_not_delivered"/>
-            <!--android:visibility="gone"/>-->
+            <!--            <ProgressBar-->
+            <!--                android:id="@+id/btn_status_message"-->
+            <!--                android:layout_width="25dp"-->
+            <!--                android:layout_height="0dp"-->
+            <!--                android:layout_marginStart="@dimen/default_padding_small"-->
+            <!--                android:visibility="gone"-->
+            <!--                app:layout_constraintBottom_toBottomOf="parent"-->
+            <!--                app:layout_constraintStart_toStartOf="parent"-->
+            <!--                app:layout_constraintTop_toTopOf="parent"-->
+            <!--                tools:ignore="ContentDescription"/>-->
 
             <TextView
-                android:id="@+id/txt_time_send_left"
+                android:id="@+id/txt_sender_nickname"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="4dp"
-                android:layout_marginStart="4dp"
+                android:layout_marginEnd="@dimen/default_padding_small"
+                android:layout_marginBottom="@dimen/default_padding_small"
                 android:textAlignment="center"
                 android:textColor="@color/colorPrimaryDark"
+                android:textSize="@dimen/small_text_size_scale_on"
                 android:textStyle="bold"
-                tools:text="12:35"/>
-
-            <ImageView
-                android:id="@+id/spacer_left"
-                android:layout_width="1dp"
-                android:layout_height="match_parent"
-                android:background="@color/colorPrimaryDark"/>
+                app:layout_constraintStart_toStartOf="@+id/txt_text_message"
+                app:layout_constraintTop_toTopOf="parent"
+                tools:text="User Nickname"/>
 
             <TextView
                 android:id="@+id/txt_text_message"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="2dp"
-                android:layout_marginStart="2dp"
-                android:layout_weight="1"
-                tools:text="Text Message... Text Message...Text Message...Text Message...Text Message..."/>
-
-            <ImageView
-                android:id="@+id/spacer_right"
-                android:layout_width="1dp"
-                android:layout_height="match_parent"
-                android:background="@color/colorPrimaryDark"/>
+                android:layout_marginStart="@dimen/default_padding_half"
+                android:layout_marginEnd="@dimen/default_padding_half"
+                android:paddingVertical="@dimen/default_padding"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toStartOf="@+id/txt_time_send_right"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintWidth_default="wrap"
+                tools:text="Text Message...Text Message...Text Message.."/>
 
             <TextView
                 android:id="@+id/txt_time_send_right"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="4dp"
-                android:layout_marginStart="4dp"
+                android:layout_marginEnd="@dimen/default_padding_small"
+                android:layout_marginBottom="@dimen/default_padding_small"
                 android:textAlignment="center"
                 android:textColor="@color/colorPrimaryDark"
+                android:textSize="@dimen/small_text_size_scale_on"
                 android:textStyle="bold"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
                 tools:text="15:27"/>
-        </LinearLayout>
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
     </FrameLayout>
+    <!--    <FrameLayout-->
+    <!--        android:layout_width="match_parent"-->
+    <!--        android:layout_height="wrap_content"-->
+    <!--        android:layout_marginStart="10dp"-->
+    <!--        android:layout_marginEnd="10dp"-->
+    <!--        android:layout_marginBottom="5dp">-->
+
+    <!--        <LinearLayout-->
+    <!--            android:id="@+id/container_message"-->
+    <!--            android:layout_width="wrap_content"-->
+    <!--            android:layout_height="wrap_content"-->
+    <!--            android:gravity="center_vertical"-->
+    <!--            android:orientation="horizontal"-->
+    <!--            android:padding="4dp"-->
+    <!--            android:weightSum="1.1"-->
+    <!--            tools:background="@drawable/background_not_my_message">-->
+
+    <!--            <ImageView-->
+    <!--                android:id="@+id/btn_status_message"-->
+    <!--                android:layout_width="0dp"-->
+    <!--                android:layout_height="25dp"-->
+    <!--                android:layout_weight="0.1"-->
+    <!--                android:adjustViewBounds="true"-->
+    <!--                android:src="@drawable/ic_message_not_delivered"/>-->
+    <!--            &lt;!&ndash;android:visibility="gone"/>&ndash;&gt;-->
+
+    <!--            <TextView-->
+    <!--                android:id="@+id/txt_time_send_left"-->
+    <!--                android:layout_width="wrap_content"-->
+    <!--                android:layout_height="wrap_content"-->
+    <!--                android:layout_marginStart="4dp"-->
+    <!--                android:layout_marginEnd="4dp"-->
+    <!--                android:textAlignment="center"-->
+    <!--                android:textColor="@color/colorPrimaryDark"-->
+    <!--                android:textStyle="bold"-->
+    <!--                tools:text="12:35"/>-->
+
+    <!--            <ImageView-->
+    <!--                android:id="@+id/spacer_left"-->
+    <!--                android:layout_width="1dp"-->
+    <!--                android:layout_height="match_parent"-->
+    <!--                android:background="@color/colorPrimaryDark"/>-->
+
+    <!--            <TextView-->
+    <!--                android:id="@+id/txt_text_message"-->
+    <!--                android:layout_width="0dp"-->
+    <!--                android:layout_height="wrap_content"-->
+    <!--                android:layout_marginStart="2dp"-->
+    <!--                android:layout_marginEnd="2dp"-->
+    <!--                android:layout_weight="1"-->
+    <!--                tools:text="Text Message... Text Message...Text Message...Text Message...Text Message..."/>-->
+
+    <!--            <ImageView-->
+    <!--                android:id="@+id/spacer_right"-->
+    <!--                android:layout_width="1dp"-->
+    <!--                android:layout_height="match_parent"-->
+    <!--                android:background="@color/colorPrimaryDark"/>-->
+
+    <!--            <TextView-->
+    <!--                android:id="@+id/txt_time_send_right"-->
+    <!--                android:layout_width="wrap_content"-->
+    <!--                android:layout_height="wrap_content"-->
+    <!--                android:layout_marginStart="4dp"-->
+    <!--                android:layout_marginEnd="4dp"-->
+    <!--                android:textAlignment="center"-->
+    <!--                android:textColor="@color/colorPrimaryDark"-->
+    <!--                android:textStyle="bold"-->
+    <!--                tools:text="15:27"/>-->
+    <!--        </LinearLayout>-->
+    <!--    </FrameLayout>-->
 </layout>

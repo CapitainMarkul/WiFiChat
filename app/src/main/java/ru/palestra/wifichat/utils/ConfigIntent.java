@@ -9,10 +9,12 @@ public class ConfigIntent {
     }
 
     public final static String ACTION_CONNECTION_INITIATED = "CONNECTION_INITIATED";
+    public final static String ACTION_CONNECTION_LOST = "CONNECTION_LOST";
     public final static String ACTION_DISCOVERY = "ACTION_DISCOVERY";
     public final static String ACTION_DELIVERED_MESSAGE = "DELIVERED_MESSAGE";
 
     public final static String MESSAGE = "MESSAGE";
+    public final static String MESSAGES = "MESSAGES";
     public final static String UPDATED_CLIENTS = "UPDATED_CLIENTS";
 
     public final static String STATUS_DISCOVERY = "STATUS_DISCOVERY";

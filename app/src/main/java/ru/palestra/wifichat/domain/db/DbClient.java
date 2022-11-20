@@ -9,7 +9,9 @@ import ru.palestra.wifichat.data.models.viewmodels.Message;
 import ru.palestra.wifichat.domain.db.command.CheckConnectedClientCommand;
 import ru.palestra.wifichat.domain.db.command.DbCommand;
 import ru.palestra.wifichat.domain.db.command.GetAllMsgFromClient;
+import ru.palestra.wifichat.domain.db.command.GetAllNotReadMsgForClient;
 import ru.palestra.wifichat.domain.db.command.GetAllWasConnectedClients;
+import ru.palestra.wifichat.domain.db.command.SaveAllSentMsgCommand;
 import ru.palestra.wifichat.domain.db.command.SaveConnectedClientCommand;
 import ru.palestra.wifichat.domain.db.command.SaveSentMsgCommand;
 import ru.palestra.wifichat.domain.db.command.UpdateMsgStatusCommand;
@@ -45,8 +47,18 @@ public class DbClient {
         return command.execute(daoSession);
     }
 
+    public List<MessageSql> getAllNotReadMsgForClient(String myUUID, String clientUUID) {
+        DbCommand<List<MessageSql>> command = new GetAllNotReadMsgForClient(myUUID, clientUUID);
+        return command.execute(daoSession);
+    }
+
     public MessageSql saveSentMsg(MessageSql messageSql) {
         DbCommand<MessageSql> command = new SaveSentMsgCommand(messageSql);
+        return command.execute(daoSession);
+    }
+
+    public List<MessageSql> saveAllMsgs(List<MessageSql> messageSql) {
+        DbCommand<List<MessageSql>> command = new SaveAllSentMsgCommand(messageSql);
         return command.execute(daoSession);
     }
 
